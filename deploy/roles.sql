@@ -11,6 +11,7 @@ GRANT USAGE ON SEQUENCE rethread.audit_records_id_seq TO rethread_api;
 GRANT SELECT,UPDATE ON rethread.cases,rethread.jobs,rethread.repositories,rethread.installations,rethread.publish_intents TO rethread_worker;
 GRANT SELECT,INSERT,UPDATE,DELETE ON rethread.events,rethread.artifacts,rethread.artifact_payloads,rethread.guards,rethread.guard_checks,rethread.budgets,rethread.budget_reservations,rethread.worker_heartbeats TO rethread_worker;
 GRANT DELETE ON rethread.sessions,rethread.oauth_states TO rethread_worker;
+GRANT SELECT(expires_at) ON rethread.sessions,rethread.oauth_states TO rethread_worker;
 -- Create separate LOGIN roles using owner tooling and private password entry,
 -- grant one capability role to each login, and use those URLs for API/worker.
 -- Neither runtime login may own the schema, CREATE ROLE, or BYPASSRLS.

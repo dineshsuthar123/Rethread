@@ -15,7 +15,8 @@ export const config = {
   clientId: process.env.GITHUB_CLIENT_ID || "",
   clientSecret: process.env.GITHUB_CLIENT_SECRET || "",
   webhookSecret: process.env.GITHUB_WEBHOOK_SECRET || "",
-  buildId: process.env.BUILD_ID || "development",
+  buildId:
+    process.env.BUILD_ID || process.env.RENDER_GIT_COMMIT || "development",
   poolSize: Number(process.env.API_DB_POOL_SIZE || 5),
 };
 export const capabilities = () => ({

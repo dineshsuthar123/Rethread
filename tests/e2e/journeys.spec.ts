@@ -205,3 +205,48 @@ test("intro and route seam review recording", async ({ page }) => {
     page.getByText("Recurrence detected", { exact: true }),
   ).toBeVisible();
 });
+test("keyboard skip link, mobile tabs, 200% zoom and tiny identity remain usable", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  await page.keyboard.press("Tab");
+  await expect(
+    page.getByRole("link", { name: "Skip to content" }),
+  ).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#main")).toBeFocused();
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.evaluate(() => (document.documentElement.style.zoom = "2"));
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: "docs/artifacts/zoom-200.png",
+    fullPage: true,
+  });
+  await page.evaluate(() => (document.documentElement.style.zoom = "1"));
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.goto("/studio/cases/example");
+  await page.getByRole("tab", { name: "Failure", exact: true }).focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(
+    page.getByRole("tab", { name: "Repair", exact: true }),
+  ).toHaveAttribute("aria-selected", "true");
+  await page.goto("/");
+  await page.setViewportSize({width:640,height:200});
+  await page.evaluate(() => {
+    document.body.innerHTML =
+      '<main style="padding:40px;background:#f3f0e8;display:flex;gap:32px">' +
+      [16, 24, 32]
+        .map(
+          (size) =>
+            `<figure><img width="${size}" height="${size}" src="/brand/favicon.svg" alt="Rethread at ${size}px"/><figcaption>${size}px</figcaption></figure>`,
+        )
+        .join("") +
+      "</main>";
+  });
+  await page.screenshot({ path: "docs/artifacts/identity-small.png" });
+});

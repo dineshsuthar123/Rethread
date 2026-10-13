@@ -64,16 +64,30 @@ jobs:
   images:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         image: [api, worker]
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
-      - run: docker build --sbom=true -f deploy/${{ matrix.image }}.Dockerfile -t rethread-${{ matrix.image }}:ci .
+      - run: docker build -f deploy/${{ matrix.image }}.Dockerfile -t rethread-${{ matrix.image }}:ci .
       - uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
         with:
           image-ref: rethread-${{ matrix.image }}:ci
           severity: CRITICAL,HIGH
           exit-code: '1'
           ignore-unfixed: true
+      - name: Image SBOM
+        if: always()
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        with:
+          image-ref: rethread-${{ matrix.image }}:ci
+          format: cyclonedx
+          output: rethread-${{ matrix.image }}-sbom.json
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        if: always()
+        with:
+          name: rethread-${{ matrix.image }}-sbom
+          path: rethread-${{ matrix.image }}-sbom.json
+          retention-days: 7

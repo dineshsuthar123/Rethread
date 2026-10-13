@@ -2375,3 +2375,61 @@ html[data-motion="off"] *:after {
 ::view-transition-new(root) {
   animation-duration: 0.2s;
 }
+
+.intro-connect {
+  position: absolute;
+  right: 4.5%;
+  top: 30px;
+  pointer-events: auto;
+  padding: 14px 20px;
+  background: #f3f0e8;
+  color: #171918;
+  font-size: 11px;
+}
+.stage pre {
+  font-size: 12px;
+}
+.diff {
+  font-size: 11px !important;
+}
+.stage p {
+  font-size: 12px;
+}
+.check-links button {
+  font-size: 10px;
+  min-height: 40px;
+}
+.stage-label,
+.source-label,
+.check-outcome {
+  font-size: 10px;
+}
+.example-limit {
+  font-size: 9px;
+}
+@media (max-width: 540px) {
+  .stage pre {
+    font-size: 11px;
+  }
+  .stage p {
+    font-size: 11px;
+  }
+  .intro-connect {
+    top: 20px;
+    font-size: 10px;
+    padding: 12px;
+  }
+  .stage-label,
+  .source-label,
+  .check-outcome {
+    font-size: 9px;
+  }
+}
+
+dialog::backdrop {
+  background: #0008;
+}
+.command-dialog,
+.artifact-dialog {
+  box-shadow: 0 16px 80px #0004;
+}

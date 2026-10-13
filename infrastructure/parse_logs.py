@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-RIFT 2026 - Log Aggregation & Normalization Script
+Rethread - Log Aggregation & Normalization Script
 Legacy structured evidence parser
 
 Parses outputs from Ruff, Mypy, and Pytest into a unified errors.json schema
@@ -18,7 +18,7 @@ OUTPUT SCHEMA (errors.json):
     }
 ]
 
-RIFT 2026 OUTPUT FORMAT (for reference — the Orchestrator generates this):
+Rethread OUTPUT FORMAT (for reference — the Orchestrator generates this):
     [BUG_TYPE] error in [FILE_PATH] line [LINE_NUMBER] -> Fix: [DESCRIPTION]
 """
 
@@ -31,12 +31,12 @@ from typing import Any
 
 
 # =============================================================================
-# Ruff Error Code -> RIFT Bug Type Mapping
+# Ruff Error Code -> Rethread Bug Type Mapping
 # =============================================================================
 # Full reference: https://docs.astral.sh/ruff/rules/
 #
 # Strategy: We map specific well-known codes. Anything unmapped defaults to
-# LINTING, which is the safest catch-all for the RIFT challenge.
+# LINTING, which is the safest catch-all for the legacy parser.
 
 RUFF_CODE_MAP: dict[str, str] = {
     # ---- SYNTAX ----
@@ -332,7 +332,7 @@ def validate_output(errors: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="RIFT 2026 - Aggregate analysis tool outputs into errors.json"
+        description="Rethread - Aggregate analysis tool outputs into errors.json"
     )
     parser.add_argument("--ruff", required=True, help="Path to Ruff JSON output")
     parser.add_argument("--mypy", required=True, help="Path to Mypy text output")

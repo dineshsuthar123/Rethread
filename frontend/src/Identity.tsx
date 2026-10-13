@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { ThreadLink as Link } from "./ThreadLink";
 export const Mark = ({ className = "" }: { className?: string }) => (
   <svg className={className} viewBox="0 0 256 256" aria-hidden="true">
     <path
@@ -142,6 +142,9 @@ export function Intro({ enabled }: { enabled: boolean }) {
         <Mark />
         rethread
       </div>
+      <Link to="/connect" className="intro-connect">
+        Connect repository ↗
+      </Link>
       <svg viewBox="0 0 1000 400" className="intro-line" aria-hidden="true">
         <path d="M0 200H360L430 150 490 240 580 190H1000" />
       </svg>

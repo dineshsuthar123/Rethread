@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
-  Link,
   NavLink,
   Route,
   Routes,
@@ -32,6 +31,8 @@ import { terminal } from "@rethread/contracts";
 import { api, ApiError, mutate, session, watchCase } from "./api";
 import { fixture } from "./fixture";
 import { Brand, Intro, Mark, Sculpture } from "./Identity";
+import { ThreadLink as Link } from "./ThreadLink";
+import { Dialog } from "./Dialog";
 
 const iconProps = { size: 16, strokeWidth: 1.6 };
 const Arrow = () => <ArrowUpRight {...iconProps} />;
@@ -93,7 +94,7 @@ export function App() {
   const [query, setQuery] = useState("");
   const [found, setFound] = useState<Case[]>([]);
   const main = useRef<HTMLElement>(null);
-  const first = useRef(true);
+  const lastRoute = useRef<string | null>(null);
   useEffect(() => {
     void session()
       .then(setIdentity)
@@ -119,10 +120,10 @@ export function App() {
     };
     document.title = `${titles[location.pathname] || "Case replay"} · Rethread`;
     setMenu(false);
-    if (first.current) {
-      first.current = false;
-      return;
-    }
+    if (lastRoute.current === location.pathname) return;
+    const initial = lastRoute.current === null;
+    lastRoute.current = location.pathname;
+    if (initial) return;
     main.current?.focus({ preventScroll: true });
     if (location.hash) {
       document.getElementById(location.hash.slice(1))?.scrollIntoView();
@@ -130,7 +131,15 @@ export function App() {
   }, [location.pathname]);
   useEffect(() => {
     const keyboard = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+      if (
+        (e.metaKey || e.ctrlKey) &&
+        e.key === "k" &&
+        !(
+          e.target instanceof HTMLInputElement ||
+          e.target instanceof HTMLTextAreaElement ||
+          (e.target as HTMLElement)?.isContentEditable
+        )
+      ) {
         e.preventDefault();
         setSearchOpen((v) => !v);
       }
@@ -317,7 +326,11 @@ export function App() {
       )}
       {location.pathname === "/" && <Intro enabled={motion} />}{" "}
       {searchOpen && (
-        <dialog open className="command-dialog" aria-label="Search Cases">
+        <Dialog
+          className="command-dialog"
+          label="Search Cases"
+          onClose={() => setSearchOpen(false)}
+        >
           <div>
             <Search {...iconProps} />
             <input
@@ -355,7 +368,7 @@ export function App() {
             </p>
           )}
           <small>Ctrl / ⌘ K to open · Esc to close</small>
-        </dialog>
+        </Dialog>
       )}
     </>
   );
@@ -1256,6 +1269,9 @@ function ReplayStage({
   onCheck?: (check: any) => void;
 }) {
   const [tab, setTab] = useState("Failure");
+  useEffect(() => {
+    if (example) setTab(["Failure", "Repair", "Guard"][step]);
+  }, [example, step]);
   const proposal = value.data.proposal;
   const checks = value.data.checks || [];
   return (
@@ -1266,6 +1282,29 @@ function ReplayStage({
             key={name}
             role="tab"
             aria-selected={tab === name}
+            tabIndex={tab === name ? 0 : -1}
+            onKeyDown={(event) => {
+              if (
+                !["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)
+              )
+                return;
+              event.preventDefault();
+              const names = ["Failure", "Repair", "Guard"];
+              const next =
+                event.key === "Home"
+                  ? 0
+                  : event.key === "End"
+                    ? 2
+                    : (names.indexOf(name) +
+                        (event.key === "ArrowRight" ? 1 : 2)) %
+                      3;
+              setTab(names[next]);
+              (
+                event.currentTarget.parentElement?.children[
+                  next
+                ] as HTMLButtonElement
+              )?.focus();
+            }}
             onClick={() => setTab(name)}
           >
             {name}
@@ -1452,7 +1491,13 @@ function CasePage({
     title: string;
     text: string;
   } | null>(null);
+  const artifactRequest = useRef<AbortController | null>(null);
+  const closeArtifact = () => {
+    artifactRequest.current?.abort();
+    setArtifact(null);
+  };
   const example = caseId === "example";
+  useEffect(() => () => artifactRequest.current?.abort(), [caseId]);
   useEffect(() => {
     setValue(null);
     setEvents([]);
@@ -1499,6 +1544,9 @@ function CasePage({
     }
   }
   async function openCheck(c: any) {
+    artifactRequest.current?.abort();
+    const artifactController = new AbortController();
+    artifactRequest.current = artifactController;
     if (example) {
       setArtifact({
         title: c.name,
@@ -1514,12 +1562,21 @@ function CasePage({
       }
       const response = await fetch(
         `/api/cases/${value!.id}/artifacts/${c.artifactId}`,
-        { credentials: "same-origin" },
+        {
+          credentials: "same-origin",
+          signal: AbortSignal.any([
+            artifactController.signal,
+            AbortSignal.timeout(10000),
+          ]),
+        },
       );
       if (!response.ok) throw new Error("Artifact expired or unavailable");
-      setArtifact({ title: c.name, text: await response.text() });
+      const text = await response.text();
+      if (!artifactController.signal.aborted)
+        setArtifact({ title: c.name, text });
     } catch (e) {
-      setArtifact({ title: c.name, text: (e as Error).message });
+      if (!artifactController.signal.aborted)
+        setArtifact({ title: c.name, text: (e as Error).message });
     }
   }
   if (example)
@@ -1695,19 +1752,23 @@ function CasePage({
         )}
       </section>
       {artifact && (
-        <dialog open className="artifact-dialog" aria-label={artifact.title}>
+        <Dialog
+          className="artifact-dialog"
+          label={artifact.title}
+          onClose={closeArtifact}
+        >
           <header>
             <h2>{artifact.title}</h2>
             <button
               className="icon-button"
               aria-label="Close evidence"
-              onClick={() => setArtifact(null)}
+              onClick={closeArtifact}
             >
               <X {...iconProps} />
             </button>
           </header>
           <pre>{artifact.text}</pre>
-        </dialog>
+        </Dialog>
       )}
     </AuthGate>
   );
@@ -1777,7 +1838,11 @@ function Guards({
           </Empty>
         )}
         {details && (
-          <dialog open className="artifact-dialog" aria-label="Guard history">
+          <Dialog
+            className="artifact-dialog"
+            label="Guard history"
+            onClose={() => setDetails(null)}
+          >
             <header>
               <h2>Guard check history</h2>
               <button
@@ -1793,7 +1858,7 @@ function Guards({
                 ? JSON.stringify(details.checks, null, 2)
                 : "No later PR checks recorded yet."}
             </pre>
-          </dialog>
+          </Dialog>
         )}
       </section>
     </AuthGate>

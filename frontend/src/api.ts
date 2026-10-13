@@ -17,6 +17,9 @@ export async function api<T>(
   const response = await fetch(`/api${path}`, {
     credentials: "same-origin",
     ...options,
+    signal: options.signal
+      ? AbortSignal.any([options.signal, AbortSignal.timeout(10000)])
+      : AbortSignal.timeout(10000),
     headers: {
       "Content-Type": "application/json",
       ...(csrf ? { "X-CSRF-Token": csrf } : {}),
