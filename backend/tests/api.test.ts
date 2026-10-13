@@ -50,6 +50,28 @@ const cookieA = randomBytes(32).toString("hex"),
   csrf = "test-csrf";
 const userA = Date.now(),
   userB = userA + 1;
+test(
+  "database outage reports blocked readiness without exposing secrets",
+  {
+    skip: !integration,
+  },
+  async (t) => {
+    t.mock.method(pool, "query", async () => {
+      throw new Error("private database credential");
+    });
+    const response = await fetch(`${origin}/api/ready`);
+    assert.equal(response.status, 503);
+    const readiness = (await response.json()) as any;
+    assert.equal(readiness.status, "blocked");
+    assert.equal(readiness.database, false);
+    assert.equal(readiness.worker, false);
+    assert.equal(readiness.capabilities.repairConfigured, false);
+    assert.ok(
+      !JSON.stringify(readiness).includes("private database credential"),
+    );
+    assert.equal((await fetch(`${origin}/api/health`)).status, 200);
+  },
+);
 before(async () => {
   if (!integration) return;
   process.env.NODE_ENV = "test";

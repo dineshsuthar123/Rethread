@@ -58,23 +58,42 @@ app.get("/api/health", (_req, res) =>
 app.get(
   "/api/ready",
   asyncRoute(async (_req, res) => {
-    await pool.query("SELECT 1 FROM rethread.schema_migrations LIMIT 1");
-    const worker = await pool.query(
-      "SELECT id,capabilities FROM worker_heartbeats WHERE updated_at>now()-interval '90 seconds' ORDER BY updated_at DESC",
+    let database = false;
+    let workers: Array<{ capabilities: { repairConfigured?: boolean } }> = [];
+    if (config.databaseUrl) {
+      try {
+        await pool.query("SELECT 1 FROM rethread.schema_migrations LIMIT 1");
+        const result = await pool.query(
+          "SELECT capabilities FROM worker_heartbeats WHERE updated_at>now()-interval '90 seconds' ORDER BY updated_at DESC",
+        );
+        workers = result.rows;
+        database = true;
+      } catch {
+        // Readiness failure is expected during setup/outage. Never expose DB errors/URLs.
+        database = false;
+      }
+    }
+    const repairConfigured = workers.some(
+      (w) => w.capabilities.repairConfigured,
     );
     const ready =
-      worker.rowCount! > 0 &&
-      worker.rows.some((w) => w.capabilities.repairConfigured) &&
-      capabilities().appConfigured;
+      database &&
+      repairConfigured &&
+      capabilities().appConfigured &&
+      capabilities().loginConfigured &&
+      Boolean(config.webhookSecret);
     res.status(ready ? 200 : 503).json({
       status: ready ? "ready" : "blocked",
-      database: true,
-      worker: Boolean(worker.rowCount),
+      database,
+      worker: workers.length > 0,
+      reason: ready
+        ? null
+        : !database
+          ? "Configure database access and apply migrations; the database is unavailable"
+          : "Configure integrations and start the trusted worker",
       capabilities: {
         ...capabilities(),
-        repairConfigured: worker.rows.some(
-          (w) => w.capabilities.repairConfigured,
-        ),
+        repairConfigured,
       },
       buildId: config.buildId,
     });
