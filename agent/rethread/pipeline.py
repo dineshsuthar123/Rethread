@@ -121,7 +121,8 @@ def repair(store, job, case, github, provider, planner):
         case["base_sha"],
         "captured failure",
         "failure",
-        f"Reproduction: {baseline.command}\nExit: {baseline.exitCode}\nOutput SHA256: {baseline.outputHash}",
+        f"Reproduction: {baseline.command}\nExit: {baseline.exitCode}\n"
+        f"Output SHA256: {baseline.outputHash}",
         case_url,
         f"case:{case['id']}:base",
     )

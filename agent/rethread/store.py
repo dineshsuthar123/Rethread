@@ -12,8 +12,8 @@ from psycopg_pool import ConnectionPool
 from .policy import digest
 from .redaction import redact
 
+PROTOCOL = json.loads((Path(__file__).parents[2] / "contracts/v1.json").read_text(encoding="utf-8"))
 
-PROTOCOL=json.loads((Path(__file__).parents[2]/"contracts/v1.json").read_text(encoding="utf-8"))
 
 class LeaseLost(RuntimeError):
     pass
@@ -36,28 +36,59 @@ class Store:
 
     def claim(self, worker):
         with self.transaction() as db:
-            db.execute("""UPDATE jobs SET status='failed',reason='Retry limit exhausted',updated_at=now()
-                         WHERE attempts>=3 AND (status='queued' OR (status='running' AND lease_until<now()))""")
-            row = db.execute("""SELECT j.* FROM jobs j WHERE j.attempts<3
-                AND ((j.status='queued' AND j.next_attempt_at<=now()) OR (j.status='running' AND j.lease_until<now()))
-                AND (SELECT count(*) FROM jobs busy WHERE busy.tenant_id=j.tenant_id
-                     AND busy.status='running' AND busy.lease_until>now())<2
-                ORDER BY j.created_at FOR UPDATE SKIP LOCKED LIMIT 1""").fetchone()
+            db.execute(
+                (
+                    "UPDATE jobs SET status='failed',reason='Retry limit exh"
+                    "austed',updated_at=now()\n                         WHERE"
+                    " attempts>=3 AND (status='queued' OR (status='running' "
+                    "AND lease_until<now()))"
+                )
+            )
+            row = db.execute(
+                (
+                    "SELECT j.* FROM jobs j WHERE j.attempts<3\n             "
+                    "   AND ((j.status='queued' AND j.next_attempt_at<=now()"
+                    ") OR (j.status='running' AND j.lease_until<now()))\n    "
+                    "            AND (SELECT count(*) FROM jobs busy WHERE b"
+                    "usy.tenant_id=j.tenant_id\n                     AND busy"
+                    ".status='running' AND busy.lease_until>now())<2\n       "
+                    "         ORDER BY j.created_at FOR UPDATE SKIP LOCKED L"
+                    "IMIT 1"
+                )
+            ).fetchone()
             if not row:
                 return None
             # Serialize concurrency admission per tenant, without holding this lock over work.
             db.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", (str(row["tenant_id"]),))
-            running = db.execute("SELECT count(*) AS count FROM jobs WHERE tenant_id=%s AND status='running' AND lease_until>now()", (row["tenant_id"],)).fetchone()["count"]
+            running = db.execute(
+                (
+                    "SELECT count(*) AS count FROM jobs WHERE tenant_id=%s A"
+                    "ND status='running' AND lease_until>now()"
+                ),
+                (row["tenant_id"],),
+            ).fetchone()["count"]
             if running >= 2:
                 return None
             return db.execute(
-                """UPDATE jobs SET status='running',worker_id=%s,fence=fence+1,
-                attempts=attempts+1,lease_until=now()+interval '60 seconds',heartbeat_at=now(),updated_at=now()
-                WHERE id=%s RETURNING *""",
+                (
+                    "UPDATE jobs SET status='running',worker_id=%s,fence=fen"
+                    "ce+1, first_started_at=coalesce(first_started_at,now()),"
+                    "attempts=attempts+1,lease_until=n"
+                    "ow()+interval '60 seconds',heartbeat_at=now(),updated_a"
+                    "t=now()\n                WHERE id=%s RETURNING *"
+                ),
                 (worker, row["id"]),
             ).fetchone()
 
     def fenced(self, db, job):
+        # All mutations take Case -> job locks, matching API cancellation.
+        if job["case_id"]:
+            case = db.execute(
+                "SELECT * FROM cases WHERE tenant_id=%s AND id=%s FOR UPDATE",
+                (job["tenant_id"], job["case_id"]),
+            ).fetchone()
+            if not case or case["state"] == "cancelled":
+                raise LeaseLost("Case cancelled")
         current = db.execute(
             """SELECT * FROM jobs WHERE id=%s AND fence=%s
              AND status='running' AND lease_until>now() FOR UPDATE""",
@@ -65,26 +96,23 @@ class Store:
         ).fetchone()
         if not current:
             raise LeaseLost("Job cancelled or lease superseded")
-        if current["case_id"]:
-            case = db.execute(
-                "SELECT * FROM cases WHERE tenant_id=%s AND id=%s FOR UPDATE",
-                (job["tenant_id"], job["case_id"]),
-            ).fetchone()
-            if case["state"] == "cancelled":
-                raise LeaseLost("Case cancelled")
         return current
 
     def heartbeat(self, job):
         with self.transaction() as db:
             self.fenced(db, job)
             db.execute(
-                "UPDATE jobs SET lease_until=now()+interval '60 seconds',heartbeat_at=now() WHERE id=%s",
+                "UPDATE jobs SET lease_until=now()+interval "
+                "'60 seconds',heartbeat_at=now() WHERE id=%s",
                 (job["id"],),
             )
 
     def event(self, db, tenant, case, event_type, payload):
         sequence = db.execute(
-            "UPDATE cases SET cursor=cursor+1,updated_at=now() WHERE tenant_id=%s AND id=%s RETURNING cursor",
+            (
+                "UPDATE cases SET cursor=cursor+1,updated_at=now() WHERE"
+                " tenant_id=%s AND id=%s RETURNING cursor"
+            ),
             (tenant, case),
         ).fetchone()["cursor"]
         payload = json.loads(redact(json.dumps(payload, default=str)))
@@ -97,10 +125,19 @@ class Store:
         with self.transaction() as db:
             self.fenced(db, job)
             if job["case_id"]:
-                current = db.execute("SELECT state FROM cases WHERE tenant_id=%s AND id=%s", (job["tenant_id"],job["case_id"])).fetchone()["state"]
-                stages=PROTOCOL["stages"]
-                if state == current or (state in stages and current in stages and stages.index(state)<stages.index(current)):
-                    state=None  # Reclaimed work can recheck evidence without rewinding durable state.
+                current = db.execute(
+                    "SELECT state FROM cases WHERE tenant_id=%s AND id=%s",
+                    (job["tenant_id"], job["case_id"]),
+                ).fetchone()["state"]
+                stages = PROTOCOL["stages"]
+                if state == current or (
+                    state in stages
+                    and current in stages
+                    and stages.index(state) < stages.index(current)
+                ):
+                    state = (
+                        None  # Reclaimed work can recheck evidence without rewinding durable state.
+                    )
                 if state and state not in PROTOCOL["transitions"][current]:
                     raise ValueError(f"Invalid transition: {current} -> {state}")
                 if state:
@@ -135,11 +172,43 @@ class Store:
             self.fenced(db, job)
             db.execute("UPDATE jobs SET sandbox_id=%s WHERE id=%s", (sandbox_id, job["id"]))
 
+    def reserve_sandbox_credit(self, job):
+        # Charge the entire upper bound even if provider creation times out.
+        # Hobby defaults: 2 vCPU + 4 GiB, 300 seconds => 13,800 micro-USD.
+        maximum = 13800
+        with self.transaction() as db:
+            self.fenced(db, job)
+            allocated = int(os.getenv("SANDBOX_FREE_CREDIT_BUDGET_MICROS", "0"))
+            db.execute(
+                "INSERT INTO sandbox_credit_allowance(id,allocated_micros) VALUES(1,%s) "
+                "ON CONFLICT DO NOTHING",
+                (allocated,),
+            )
+            row = db.execute(
+                "SELECT * FROM sandbox_credit_allowance WHERE id=1 FOR UPDATE"
+            ).fetchone()
+            checks = db.execute(
+                "SELECT count(*) AS count FROM sandbox_credit_charges WHERE job_id=%s", (job["id"],)
+            ).fetchone()["count"]
+            if row["charged_micros"] + maximum > row["allocated_micros"] or checks >= 24:
+                raise ValueError("blocked: Allocated free sandbox credit or check ceiling reached")
+            db.execute(
+                "UPDATE sandbox_credit_allowance SET charged_micros=charged_micros+%s WHERE id=1",
+                (maximum,),
+            )
+            db.execute(
+                "INSERT INTO sandbox_credit_charges(id,job_id,maximum_micros) VALUES(%s,%s,%s)",
+                (uuid4(), job["id"], maximum),
+            )
+
     def finish(self, job, failed=False, reason=None):
         with self.transaction() as db:
             self.fenced(db, job)
             db.execute(
-                "UPDATE jobs SET status=%s,reason=%s,sandbox_id=NULL,lease_until=NULL,updated_at=now() WHERE id=%s",
+                (
+                    "UPDATE jobs SET status=%s,reason=%s,sandbox_id=NULL,lea"
+                    "se_until=NULL,updated_at=now() WHERE id=%s"
+                ),
                 ("failed" if failed else "completed", reason, job["id"]),
             )
 
@@ -151,18 +220,29 @@ class Store:
         identity = str(uuid4())
         with self.transaction() as db:
             self.fenced(db, job)
+            db.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", (str(job["tenant_id"]),))
             db.execute(
                 "SELECT id FROM cases WHERE tenant_id=%s AND id=%s FOR UPDATE",
                 (job["tenant_id"], job["case_id"]),
             )
             used = db.execute(
-                "SELECT coalesce(sum(raw_bytes),0) AS used FROM artifacts WHERE tenant_id=%s AND case_id=%s",
+                "SELECT coalesce(sum(raw_bytes),0) AS used "
+                "FROM artifacts WHERE tenant_id=%s AND case_id=%s",
                 (job["tenant_id"], job["case_id"]),
             ).fetchone()["used"]
             if used + len(raw) > 25 * 1024 * 1024:
                 raise ValueError("Case artifact quota exceeded")
+            tenant_bytes = db.execute(
+                "SELECT coalesce(sum(raw_bytes),0) AS used FROM artifacts WHERE tenant_id=%s",
+                (job["tenant_id"],),
+            ).fetchone()["used"]
+            if tenant_bytes + len(raw) > int(os.getenv("TENANT_ARTIFACT_BYTES", "524288000")):
+                raise ValueError("Tenant artifact quota exceeded")
             db.execute(
-                "INSERT INTO artifacts(tenant_id,id,case_id,kind,content_hash,raw_bytes,truncated) VALUES(%s,%s,%s,%s,%s,%s,%s)",
+                (
+                    "INSERT INTO artifacts(tenant_id,id,case_id,kind,content"
+                    "_hash,raw_bytes,truncated) VALUES(%s,%s,%s,%s,%s,%s,%s)"
+                ),
                 (
                     job["tenant_id"],
                     identity,
@@ -191,6 +271,15 @@ class Store:
                     raise ValueError("Reservation identity mismatch")
                 return not existing["settled"]
             day = db.execute("SELECT current_date AS day").fetchone()["day"]
+            if amount == 0:
+                db.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", (f"free-llm:{day}",))
+                count = db.execute(
+                    "SELECT count(*) AS count FROM budget_reservations "
+                    "WHERE tenant_id=%s AND day=%s AND amount_micros=0",
+                    (tenant, day),
+                ).fetchone()["count"]
+                if count >= int(os.getenv("LLM_FREE_DAILY_CALL_LIMIT", "10")):
+                    raise ValueError("budget_exceeded: Free LLM daily call ceiling reached")
             for scope, limit in sorted(
                 [
                     ("global", int(os.getenv("GLOBAL_DAILY_BUDGET_MICROS", "10000000"))),
@@ -198,7 +287,8 @@ class Store:
                 ]
             ):
                 db.execute(
-                    "INSERT INTO budgets(scope,day,ceiling_micros) VALUES(%s,%s,%s) ON CONFLICT DO NOTHING",
+                    "INSERT INTO "
+                    "budgets(scope,day,ceiling_micros) VALUES(%s,%s,%s) ON CONFLICT DO NOTHING",
                     (scope, day, limit),
                 )
                 row = db.execute(
@@ -207,11 +297,13 @@ class Store:
                 if row["reserved_micros"] + row["spent_micros"] + amount > row["ceiling_micros"]:
                     raise ValueError("budget_exceeded: Daily ceiling would be exceeded")
                 db.execute(
-                    "UPDATE budgets SET reserved_micros=reserved_micros+%s WHERE scope=%s AND day=%s",
+                    "UPDATE budgets SET "
+                    "reserved_micros=reserved_micros+%s WHERE scope=%s AND day=%s",
                     (amount, scope, day),
                 )
             db.execute(
-                "INSERT INTO budget_reservations(id,tenant_id,day,amount_micros) VALUES(%s,%s,%s,%s)",
+                "INSERT INTO "
+                "budget_reservations(id,tenant_id,day,amount_micros) VALUES(%s,%s,%s,%s)",
                 (reservation_id, tenant, day, amount),
             )
             return True
@@ -226,7 +318,10 @@ class Store:
             charged = min(actual, row["amount_micros"])
             for scope in sorted(["global", str(row["tenant_id"])]):
                 db.execute(
-                    "UPDATE budgets SET reserved_micros=reserved_micros-%s,spent_micros=spent_micros+%s WHERE scope=%s AND day=%s",
+                    (
+                        "UPDATE budgets SET reserved_micros=reserved_micros-%s,s"
+                        "pent_micros=spent_micros+%s WHERE scope=%s AND day=%s"
+                    ),
                     (row["amount_micros"], charged, scope, row["day"]),
                 )
             db.execute(

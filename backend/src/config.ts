@@ -1,6 +1,8 @@
 import dotenv from "dotenv";
-import {fileURLToPath} from "node:url";
-dotenv.config({path:fileURLToPath(new URL("../../.env.rethread.local",import.meta.url))});
+import { fileURLToPath } from "node:url";
+dotenv.config({
+  path: fileURLToPath(new URL("../../.env.rethread.local", import.meta.url)),
+});
 export const config = {
   port: Number(process.env.PORT || 3001),
   databaseUrl: process.env.DATABASE_URL,

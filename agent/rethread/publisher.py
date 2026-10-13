@@ -67,7 +67,12 @@ def publish(store, job, case, github):
         prefix = f".rethread/cases/{case['id']}"
         writes[f"{prefix}/manifest.json"] = json.dumps(portable, indent=2)
         writes[f"{prefix}/README.md"] = (
-            "# Reproduce this Case\n\nUse a disposable isolated environment. Install the hashed requirements.lock.\nRun the reproduction command and unchanged pytest/Ruff suite listed in manifest.json.\nThe additive guard fails at the recorded base and passes on this repair.\nVerification is scoped to these checks, not all possible behavior.\n"
+            "# Reproduce this Case\n\nUse a disposable isolated enviro"
+            "nment. Install the hashed requirements.lock.\nRun the re"
+            "production command and unchanged pytest/Ruff suite list"
+            "ed in manifest.json.\nThe additive guard fails at the re"
+            "corded base and passes on this repair.\nVerification is "
+            "scoped to these checks, not all possible behavior.\n"
         )
         for path, content in writes.items():
             store.heartbeat(job)
@@ -124,7 +129,9 @@ def publish(store, job, case, github):
     )
     case_url = f"{os.environ['PUBLIC_ORIGIN']}/studio/cases/{case['id']}"
     checks = "\n".join(
-        f"- {c['phase']}: `{c['command']}` — exit {c['exitCode']}, collected {c['collected']}, passed {c['passed']}"
+        f"- {c['phase']}: `{c['command']}` — exit {c['exitCode']}, collected {
+            c['collected']
+        }, passed {c['passed']}"
         for c in case["data"]["checks"]
     )
     body = f"""## Symptom
@@ -166,14 +173,20 @@ The environment recipe is pinned, but byte-for-byte determinism is not promised.
     with store.transaction() as db:
         store.fenced(db, job)
         db.execute(
-            "UPDATE publish_intents SET status='published',pr_url=%s WHERE tenant_id=%s AND case_id=%s",
+            "UPDATE publish_intents SET "
+            "status='published',pr_url=%s WHERE tenant_id=%s AND case_id=%s",
             (pr["html_url"], job["tenant_id"], job["case_id"]),
         )
         guard = proposal["guard"]
         if guard:
             db.execute(
-                """INSERT INTO guards(tenant_id,id,repository_id,case_id,test_name,path,contract,source_paths,content,last_sha,last_passed_at)
-               VALUES(%s,gen_random_uuid(),%s,%s,%s,%s,%s,%s,%s,%s,now()) ON CONFLICT(tenant_id,case_id) DO NOTHING""",
+                (
+                    "INSERT INTO guards(tenant_id,id,repository_id,case_id,t"
+                    "est_name,path,contract,source_paths,content,last_sha,la"
+                    "st_passed_at)\n               VALUES(%s,gen_random_uuid("
+                    "),%s,%s,%s,%s,%s,%s,%s,%s,now()) ON CONFLICT(tenant_id,"
+                    "case_id) DO NOTHING"
+                ),
                 (
                     job["tenant_id"],
                     case["repository_id"],
@@ -183,6 +196,28 @@ The environment recipe is pinned, but byte-for-byte determinism is not promised.
                     guard["contract"],
                     guard["paths"],
                     guard["content"],
+                    intent["commit_sha"],
+                ),
+            )
+        else:
+            configuration = {
+                p: digest(files[p])
+                for p in ("pyproject.toml", "ruff.toml", ".ruff.toml")
+                if p in files
+            }
+            db.execute(
+                "INSERT INTO guards(tenant_id,id,repository_id,case_id,test_name,path,"
+                "contract,source_paths,content,last_sha,last_passed_at,kind) "
+                "VALUES(%s,gen_random_uuid(),%s,%s,'ruff check .','ruff check .',"
+                "%s,%s,%s,%s,now(),'ruff') "
+                "ON CONFLICT(tenant_id,case_id) DO NOTHING",
+                (
+                    job["tenant_id"],
+                    case["repository_id"],
+                    case["id"],
+                    "The retained Ruff inventory passes with its original configuration.",
+                    [f["path"] for f in proposal["files"]],
+                    json.dumps(configuration),
                     intent["commit_sha"],
                 ),
             )

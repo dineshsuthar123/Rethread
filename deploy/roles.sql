@@ -14,3 +14,7 @@ GRANT DELETE ON rethread.sessions,rethread.oauth_states TO rethread_worker;
 -- Create separate LOGIN roles using owner tooling and private password entry,
 -- grant one capability role to each login, and use those URLs for API/worker.
 -- Neither runtime login may own the schema, CREATE ROLE, or BYPASSRLS.
+
+GRANT SELECT,INSERT,UPDATE ON rethread.worker_wakeups TO rethread_api;
+
+GRANT SELECT,INSERT,UPDATE ON rethread.sandbox_credit_allowance,rethread.sandbox_credit_charges TO rethread_worker;

@@ -1,8 +1,11 @@
 ﻿import { readdir, readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
-import {config} from "./config.js";
-const pool=new pg.Pool({connectionString:process.env.MIGRATION_DATABASE_URL||config.databaseUrl,max:1});
+import { config } from "./config.js";
+const pool = new pg.Pool({
+  connectionString: process.env.MIGRATION_DATABASE_URL || config.databaseUrl,
+  max: 1,
+});
 import { hash } from "./security.js";
 const db = await pool.connect();
 try {

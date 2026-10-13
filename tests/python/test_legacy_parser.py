@@ -1,8 +1,10 @@
 import json
 import sys
 from pathlib import Path
-sys.path.insert(0,str(Path(__file__).parents[2]/"agent"))
-from error_parser import parse_errors_json, classify_bug_type
+
+sys.path.insert(0, str(Path(__file__).parents[2] / "agent"))
+from error_parser import classify_bug_type, parse_errors_json
+
 
 class TestErrorParser:
     def test_classify_ruff_import(self):
@@ -36,8 +38,19 @@ class TestErrorParser:
     def test_parse_errors_json_valid(self, tmp_path):
         errors_file = tmp_path / "errors.json"
         errors_data = [
-            {"file": "src/utils.py", "line": 15, "message": "F401 `os` imported but unused", "source": "ruff", "rule_code": "F401"},
-            {"file": "src/main.py", "line": 22, "message": "AssertionError: assert 3 == 4", "source": "pytest"},
+            {
+                "file": "src/utils.py",
+                "line": 15,
+                "message": "F401 `os` imported but unused",
+                "source": "ruff",
+                "rule_code": "F401",
+            },
+            {
+                "file": "src/main.py",
+                "line": 22,
+                "message": "AssertionError: assert 3 == 4",
+                "source": "pytest",
+            },
         ]
         errors_file.write_text(json.dumps(errors_data))
 

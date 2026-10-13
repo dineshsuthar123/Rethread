@@ -5,18 +5,44 @@ import pytest
 from pydantic import ValidationError
 
 from agent.rethread.contracts import Plan
-from agent.rethread.policy import PolicyError, apply_plan, digest, pinned_requirements, safe_path, unpack_archive
+from agent.rethread.policy import (
+    PolicyError,
+    apply_plan,
+    digest,
+    pinned_requirements,
+    safe_path,
+    unpack_archive,
+)
 from agent.rethread.sandbox import E2BProvider, SandboxUnavailable, normalize
 from tests.python.emulator import CONTRACT, ROOT, fixture_files
 
 
 def fixture_plan():
-    return Plan.model_validate({"rationale": "The duplicate delivery lacked an atomic event claim and enqueue transaction.",
-                               "files": [{"path": "delivery.py", "baseHash": digest(fixture_files()["delivery.py"]), "content": (ROOT/"candidate.py").read_text()}],
-                               "guard": {"path": "tests/guards/test_duplicate_delivery.py", "content": (ROOT/"guard.py").read_text(), "test": "tests/guards/test_duplicate_delivery.py::test_duplicate_delivery", "contract": CONTRACT, "paths": ["delivery.py"]}})
+    return Plan.model_validate(
+        {
+            "rationale": "The duplicate delivery lacked an "
+            "atomic event claim and enqueue transaction.",
+            "files": [
+                {
+                    "path": "delivery.py",
+                    "baseHash": digest(fixture_files()["delivery.py"]),
+                    "content": (ROOT / "candidate.py").read_text(),
+                }
+            ],
+            "guard": {
+                "path": "tests/guards/test_duplicate_delivery.py",
+                "content": (ROOT / "guard.py").read_text(),
+                "test": "tests/guards/test_duplicate_delivery.py::test_duplicate_delivery",
+                "contract": CONTRACT,
+                "paths": ["delivery.py"],
+            },
+        }
+    )
 
 
-@pytest.mark.parametrize("path", ["../secret", "/etc/passwd", "C:/temp/a.py", "a\\b", "a/../b", "a//b", "a/./b"])
+@pytest.mark.parametrize(
+    "path", ["../secret", "/etc/passwd", "C:/temp/a.py", "a\\b", "a/../b", "a//b", "a/./b"]
+)
 def test_paths_are_exact_and_confined(path):
     with pytest.raises(PolicyError):
         safe_path(path)
@@ -43,7 +69,15 @@ def test_exact_hash_prevents_stale_or_fuzzy_edit():
         apply_plan(files, plan, CONTRACT, "pytest")
 
 
-@pytest.mark.parametrize("path,content", [("tests/test_delivery.py", "assert True\n"), (".github/workflows/ci.yml", ""), ("delivery.py", "# noqa\npass\n"), ("delivery.py", "import pytest\npytest.xfail('hide')\n")])
+@pytest.mark.parametrize(
+    "path,content",
+    [
+        ("tests/test_delivery.py", "assert True\n"),
+        (".github/workflows/ci.yml", ""),
+        ("delivery.py", "# noqa\npass\n"),
+        ("delivery.py", "import pytest\npytest.xfail('hide')\n"),
+    ],
+)
 def test_original_tests_and_suppressions_are_forbidden(path, content):
     files = fixture_files()
     files.setdefault(path, b"original")
@@ -69,7 +103,17 @@ def test_oracle_contract_cannot_be_redefined_by_model():
         apply_plan(fixture_files(), plan, CONTRACT, "pytest")
 
 
-@pytest.mark.parametrize("code,report", [(0, '<testsuites><testsuite tests="0"/></testsuites>'), (0, "not xml"), (5, '<testsuites><testsuite tests="0"/></testsuites>'), (None, ""), (127, ""), (0, '<testsuites><testsuite tests="1" failures="1"/></testsuites>')])
+@pytest.mark.parametrize(
+    "code,report",
+    [
+        (0, '<testsuites><testsuite tests="0"/></testsuites>'),
+        (0, "not xml"),
+        (5, '<testsuites><testsuite tests="0"/></testsuites>'),
+        (None, ""),
+        (127, ""),
+        (0, '<testsuites><testsuite tests="1" failures="1"/></testsuites>'),
+    ],
+)
 def test_empty_invalid_missing_tool_and_timeout_never_pass(code, report):
     assert not normalize("pytest", "candidate", "pytest", code, "output", report, 1).check.passed
 

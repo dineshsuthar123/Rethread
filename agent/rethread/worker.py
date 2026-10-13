@@ -2,7 +2,10 @@ import json
 import os
 import signal
 import threading
+from datetime import datetime, timezone
 from uuid import uuid4
+
+from psycopg.types.json import Jsonb
 
 from .github import GitHub
 from .pipeline import repair
@@ -19,17 +22,33 @@ def main():
     stopped = threading.Event()
     signal.signal(signal.SIGTERM, lambda *_: stopped.set())
     signal.signal(signal.SIGINT, lambda *_: stopped.set())
-    while not stopped.is_set():
+    completed_jobs = 0
+
+    def announce():
+        configured = all(
+            os.getenv(key) for key in ("E2B_API_KEY", "E2B_TEMPLATE_ID", "LLM_API_KEY", "LLM_MODEL")
+        )
         with store.transaction() as db:
             db.execute(
-                "INSERT INTO worker_heartbeats(id,build_id) VALUES(%s,%s) ON CONFLICT(id) DO UPDATE SET updated_at=now()",
-                (worker_id, os.getenv("BUILD_ID", "development")),
+                "INSERT INTO worker_heartbeats(id,build_id,capabilities) VALUES(%s,%s,%s) "
+                "ON CONFLICT(id) DO UPDATE SET updated_at=now(),capabilities=excluded.capabilities",
+                (
+                    worker_id,
+                    os.getenv("BUILD_ID", "development"),
+                    Jsonb({"repairConfigured": configured}),
+                ),
             )
+
+    while not stopped.is_set():
+        announce()
+        with store.transaction() as db:
             db.execute("DELETE FROM artifacts WHERE expires_at<now()")
             db.execute("DELETE FROM oauth_states WHERE expires_at<now()")
             db.execute("DELETE FROM sessions WHERE expires_at<now()")
         job = store.claim(worker_id)
         if not job:
+            if os.getenv("WORKER_EXIT_WHEN_IDLE") == "true":
+                break
             stopped.wait(2)
             continue
         lost = threading.Event()
@@ -42,6 +61,17 @@ def main():
                 try:
                     if stopped.is_set():
                         raise LeaseLost("Worker shutdown")
+                    announce()
+                    started = job.get("first_started_at") or job["created_at"]
+                    elapsed = (datetime.now(timezone.utc) - started).total_seconds()
+                    if elapsed > int(os.getenv("MAX_JOB_WALL_SECONDS", "900")):
+                        store.save(
+                            job,
+                            "blocked" if job["case_id"] else None,
+                            reason="Job wall-time ceiling reached",
+                        )
+                        store.finish(job, failed=True, reason="Job wall-time ceiling reached")
+                        raise LeaseLost("Wall-time limit")
                     store.heartbeat(job)
                 except Exception:
                     lost.set()
@@ -68,6 +98,23 @@ def main():
                 )
             if not repository:
                 raise SandboxUnavailable("GitHub installation is disconnected")
+            finished_states = {
+                "pr_opened",
+                "needs_input",
+                "unsupported",
+                "blocked",
+                "failed",
+                "cancelled",
+                "rejected",
+                "superseded",
+            }
+            if case and (
+                case["state"] in finished_states
+                or job["kind"] == "repair"
+                and case["state"] == "ready_for_review"
+            ):
+                store.finish(job, reason="Reconciled persisted Case outcome after restart")
+                continue
             github = GitHub(repository)
             if job["sandbox_id"]:
                 # Recover an orphan from a previous lease before starting another.
@@ -80,6 +127,7 @@ def main():
                 provider = E2BProvider(
                     lambda identity: store.sandbox(job, identity),
                     lambda: lost.is_set() or stopped.is_set(),
+                    lambda: store.reserve_sandbox_credit(job),
                 )
                 if job["kind"] == "repair":
                     repair(store, job, case, github, provider, plan)
@@ -104,7 +152,10 @@ def main():
             )
             if job["kind"] == "publish":
                 state = "ready_for_review"
-                safe_reason = "Draft PR publication failed; verified evidence is retained. Retry reconciles existing branch/PR."
+                safe_reason = (
+                    "Draft PR publication failed; verified evidence is retai"
+                    "ned. Retry reconciles existing branch/PR."
+                )
             else:
                 state = (
                     "unsupported"
@@ -133,12 +184,15 @@ def main():
                 flush=True,
             )
         finally:
+            completed_jobs += 1
             finished.set()
             pulse.join(timeout=1)
             if provider:
                 provider.close()
             if github:
                 github.close()
+        if completed_jobs >= int(os.getenv("MAX_JOBS_PER_INVOCATION", "1000000")):
+            break
     store.pool.close()
 
 

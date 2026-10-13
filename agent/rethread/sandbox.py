@@ -5,8 +5,8 @@ import os
 import shlex
 import time
 from dataclasses import dataclass
-from typing import Protocol
 from pathlib import Path
+from typing import Protocol
 from uuid import uuid4
 from xml.etree import ElementTree
 
@@ -79,17 +79,32 @@ def normalize(kind, phase, command, code, output, report, duration, test=""):
 
 
 class E2BProvider:
-    def __init__(self, on_sandbox=lambda identity: None, cancelled=lambda: False):
+    def __init__(
+        self, on_sandbox=lambda identity: None, cancelled=lambda: False, before_create=None
+    ):
+        if (
+            os.getenv("FREE_ONLY", "true") == "true"
+            and os.getenv("E2B_FREE_ENTITLEMENT_CONFIRMED") != "true"
+        ):
+            raise SandboxUnavailable(
+                "Confirm available E2B Hobby credits privately; paid sandbox usage is disabled"
+            )
         if not os.getenv("E2B_API_KEY") or not os.getenv("E2B_TEMPLATE_ID"):
             raise SandboxUnavailable("E2B credentials and a validated template are required")
         self.on_sandbox = on_sandbox
         self.cancelled = cancelled
         self.active = None
         self.last_recipe = None
+        self.before_create = before_create
 
     def check(self, files, kind, test, phase):
         if self.cancelled():
             raise SandboxUnavailable("Job cancelled")
+        if self.before_create is None:
+            raise SandboxUnavailable(
+                "A trusted free-credit reservation is required before sandbox creation"
+            )
+        self.before_create()
         sandbox = Sandbox.create(
             template=os.environ["E2B_TEMPLATE_ID"],
             api_key=os.environ["E2B_API_KEY"],
@@ -105,7 +120,8 @@ class E2BProvider:
         try:
             # No Git tokens, model keys, DB settings or host environment are transferred.
             sandbox.commands.run(
-                "mkdir -p /workspace /evidence /opt/rethread && chown user:user /workspace /evidence",
+                "mkdir -p /workspace /evidence "
+                "/opt/rethread && chown user:user /workspace /evidence",
                 user="root",
                 timeout=10,
             )
@@ -113,7 +129,11 @@ class E2BProvider:
                 safe_path(path)
                 sandbox.files.write(f"/workspace/{path}", data, user="user")
             install = sandbox.commands.run(
-                "/opt/rethread/venv/bin/python -m pip install --only-binary=:all: --require-hashes --no-deps -r /workspace/requirements.lock >/opt/rethread/install.log 2>&1",
+                (
+                    "/opt/rethread/venv/bin/python -m pip install --only-bin"
+                    "ary=:all: --require-hashes --no-deps -r /workspace/requ"
+                    "irements.lock >/opt/rethread/install.log 2>&1"
+                ),
                 user="root",
                 cwd="/workspace",
                 timeout=90,
@@ -121,7 +141,12 @@ class E2BProvider:
             if install.exit_code != 0:
                 raise SandboxUnavailable("Pinned dependency installation failed")
             freeze = sandbox.commands.run(
-                "/opt/rethread/venv/bin/python --version && /opt/rethread/venv/bin/python -m pytest --version && /opt/rethread/venv/bin/python -m ruff --version && /opt/rethread/venv/bin/python -m pip freeze --all",
+                (
+                    "/opt/rethread/venv/bin/python --version && /opt/rethrea"
+                    "d/venv/bin/python -m pytest --version && /opt/rethread/"
+                    "venv/bin/python -m ruff --version && /opt/rethread/venv"
+                    "/bin/python -m pip freeze --all"
+                ),
                 user="user",
                 timeout=10,
             )
@@ -129,7 +154,8 @@ class E2BProvider:
                 "templateId": os.environ["E2B_TEMPLATE_ID"],
                 "toolVersions": redact(freeze.stdout),
                 "requirementsHash": digest(files["requirements.lock"]),
-                "dependencyInstall": "python -m pip install --require-hashes --no-deps -r requirements.lock",
+                "dependencyInstall": "python -m pip install "
+                "--require-hashes --no-deps -r requirements.lock",
                 "network": "Package registry egress only for install; denied for checks",
                 "complete": True,
             }
@@ -147,22 +173,55 @@ class E2BProvider:
             if self.cancelled():
                 raise SandboxUnavailable("Job cancelled")
             if kind == "pytest":
-                command = f"python -m pytest -q {shlex.quote(test) if test else ''} --junitxml=/evidence/report.xml"
+                command = (
+                    f"python -m pytest -q {shlex.quote(test) if test else ''} "
+                    "--junitxml=/evidence/report.xml"
+                )
             elif kind == "ruff":
                 command = "python -m ruff check --output-format=json ."
             else:
                 raise SandboxUnavailable("Unsupported evaluator")
-            sandbox.files.write("/opt/rethread/evaluator.py", Path(__file__).with_name("evaluator.py").read_bytes(), user="root")
-            sandbox.commands.run("chmod -R go-w /opt/rethread && chmod 755 /opt/rethread", user="root", timeout=10)
+            sandbox.files.write(
+                "/opt/rethread/evaluator.py",
+                Path(__file__).with_name("evaluator.py").read_bytes(),
+                user="root",
+            )
+            sandbox.commands.run(
+                "chmod -R go-w /opt/rethread && chmod 755 /opt/rethread", user="root", timeout=10
+            )
             started = time.monotonic()
             try:
-                sandbox.commands.run(f"/opt/rethread/venv/bin/python /opt/rethread/evaluator.py {shlex.quote(kind)} {shlex.quote(test)}", user="root", timeout=90)
+                sandbox.commands.run(
+                    "/usr/bin/env -i PATH=/usr/local/bin:/usr/bin:/bin "
+                    "python3 -I -S /opt/rethread/evaluator.py "
+                    f"{shlex.quote(kind)} {shlex.quote(test)}",
+                    user="root",
+                    timeout=90,
+                )
                 result = json.loads(sandbox.files.read("/opt/rethread/result.json", user="root"))
-                if len(result["output"]) > 2*1024*1024:
+                if len(result["output"]) > 2 * 1024 * 1024:
                     raise ValueError("Evaluator output exceeds limit")
-                return normalize(kind, phase, command, result["exitCode"], result["output"], result["report"], result["durationMs"], test)
+                return normalize(
+                    kind,
+                    phase,
+                    command,
+                    result["exitCode"],
+                    result["output"],
+                    result["report"],
+                    result["durationMs"],
+                    test,
+                )
             except Exception as exc:
-                return normalize(kind, phase, command, None, f"Runner failed: {type(exc).__name__}", "", int((time.monotonic()-started)*1000), test)
+                return normalize(
+                    kind,
+                    phase,
+                    command,
+                    None,
+                    f"Runner failed: {type(exc).__name__}",
+                    "",
+                    int((time.monotonic() - started) * 1000),
+                    test,
+                )
         finally:
             self.close()
 

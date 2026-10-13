@@ -1,0 +1,50 @@
+# Reuses the registered workflow path so the implementation branch can be
+# dispatched without merging main. Repository code is never executed here.
+name: Rethread trusted worker
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: rethread-trusted-worker
+  cancel-in-progress: false
+jobs:
+  worker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+        with:
+          version: '0.13.0'
+      - run: uv sync --frozen --no-dev
+      - name: Drain persisted jobs through isolated sandboxes
+        run: uv run --no-dev python -m agent.rethread.worker
+        env:
+          DATABASE_URL: ${{ secrets.RETHREAD_WORKER_DATABASE_URL }}
+          GITHUB_APP_ID: ${{ secrets.RETHREAD_GITHUB_APP_ID }}
+          GITHUB_APP_PRIVATE_KEY: ${{ secrets.RETHREAD_GITHUB_APP_PRIVATE_KEY }}
+          E2B_API_KEY: ${{ secrets.RETHREAD_E2B_API_KEY }}
+          E2B_TEMPLATE_ID: ${{ secrets.RETHREAD_E2B_TEMPLATE_ID }}
+          LLM_API_KEY: ${{ secrets.RETHREAD_LLM_API_KEY }}
+          LLM_MODEL: ${{ vars.RETHREAD_LLM_MODEL }}
+          LLM_BASE_URL: https://api.groq.com/openai/v1
+          PUBLIC_ORIGIN: ${{ vars.RETHREAD_PUBLIC_ORIGIN }}
+          BUILD_ID: ${{ github.sha }}
+          WORKER_EXIT_WHEN_IDLE: 'true'
+          MAX_JOBS_PER_INVOCATION: '2'
+          MAX_JOB_WALL_SECONDS: '720'
+          WORKER_MODE: github-actions
+          TENANT_DAILY_BUDGET_MICROS: '0'
+          GLOBAL_DAILY_BUDGET_MICROS: '0'
+          ALLOW_FREE_LLM: 'true'
+          FREE_ONLY: 'true'
+          FREE_LLM_ENTITLEMENT_CONFIRMED: ${{ vars.RETHREAD_FREE_LLM_ENTITLEMENT_CONFIRMED }}
+          E2B_FREE_ENTITLEMENT_CONFIRMED: ${{ vars.RETHREAD_E2B_FREE_ENTITLEMENT_CONFIRMED }}
+
+          SANDBOX_FREE_CREDIT_BUDGET_MICROS: ${{ vars.RETHREAD_SANDBOX_FREE_CREDIT_BUDGET_MICROS }}

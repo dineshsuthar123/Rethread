@@ -10,6 +10,7 @@ import { authRoutes, asyncRoute } from "./auth.js";
 import { routes } from "./routes.js";
 import { webhookRoutes } from "./webhook.js";
 import { HttpError } from "./security.js";
+import { wakeWorker } from "./workerWake.js";
 export const logger = pino({
   name: "rethread-api",
   redact: [
@@ -26,8 +27,24 @@ app.disable("x-powered-by");
 app.set("trust proxy", 1);
 app.use(helmet());
 app.use((req, res, next) => {
+  const started = performance.now();
+  const requestPath = req.path;
   req.requestId = randomUUID();
   res.set("X-Request-ID", req.requestId);
+  res.on("finish", () => {
+    if (req.path === "/api/health") return;
+    logger.info(
+      {
+        requestId: req.requestId,
+        method: req.method,
+        path: requestPath,
+        status: res.statusCode,
+        durationMs: Math.round(performance.now() - started),
+        tenantId: req.identity?.tenant_id,
+      },
+      "Request completed",
+    );
+  });
   next();
 });
 app.get("/api/health", (_req, res) =>
@@ -43,24 +60,47 @@ app.get(
   asyncRoute(async (_req, res) => {
     await pool.query("SELECT 1 FROM rethread.schema_migrations LIMIT 1");
     const worker = await pool.query(
-      "SELECT id FROM worker_heartbeats WHERE updated_at>now()-interval '90 seconds'",
+      "SELECT id,capabilities FROM worker_heartbeats WHERE updated_at>now()-interval '90 seconds' ORDER BY updated_at DESC",
     );
     const ready =
       worker.rowCount! > 0 &&
-      capabilities().repairConfigured &&
+      worker.rows.some((w) => w.capabilities.repairConfigured) &&
       capabilities().appConfigured;
-    res
-      .status(ready ? 200 : 503)
-      .json({
-        status: ready ? "ready" : "blocked",
-        database: true,
-        worker: Boolean(worker.rowCount),
-        capabilities: capabilities(),
-        buildId: config.buildId,
-      });
+    res.status(ready ? 200 : 503).json({
+      status: ready ? "ready" : "blocked",
+      database: true,
+      worker: Boolean(worker.rowCount),
+      capabilities: {
+        ...capabilities(),
+        repairConfigured: worker.rows.some(
+          (w) => w.capabilities.repairConfigured,
+        ),
+      },
+      buildId: config.buildId,
+    });
   }),
 );
-app.get("/api/capabilities", (_req, res) => res.json(capabilities()));
+app.get(
+  "/api/capabilities",
+  asyncRoute(async (_req, res) => {
+    const worker = await pool
+      .query(
+        "SELECT capabilities FROM worker_heartbeats WHERE updated_at>now()-interval '90 seconds' ORDER BY updated_at DESC LIMIT 1",
+      )
+      .catch(() => ({ rows: [] }));
+    res.json({
+      ...capabilities(),
+      repairConfigured: Boolean(worker.rows[0]?.capabilities.repairConfigured),
+    });
+  }),
+);
+app.use("/api", (req, res, next) => {
+  const webhook = req.path === "/webhooks/github";
+  res.on("finish", () => {
+    if (req.identity || webhook) void wakeWorker().catch(() => {});
+  });
+  next();
+});
 app.use("/api", webhookRoutes);
 app.use(express.json({ limit: "64kb" }));
 app.use(
@@ -95,19 +135,17 @@ app.use(
       },
       "Request failed",
     );
-    res
-      .status(status)
-      .json({
-        error: {
-          code: known ? err.code : validation ? "validation" : "internal",
-          message: known
-            ? err.message
-            : validation
-              ? "Check the supplied fields"
-              : "The service could not complete this request",
-          requestId: req.requestId,
-        },
-      });
+    res.status(status).json({
+      error: {
+        code: known ? err.code : validation ? "validation" : "internal",
+        message: known
+          ? err.message
+          : validation
+            ? "Check the supplied fields"
+            : "The service could not complete this request",
+        requestId: req.requestId,
+      },
+    });
   },
 );
 if (process.env.NODE_ENV !== "test") {

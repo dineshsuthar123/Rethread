@@ -68,7 +68,10 @@ def unpack_archive(data: bytes) -> dict[str, bytes]:
 
 
 FORBIDDEN = re.compile(
-    r"(?:pytest\.(?:skip|xfail)|@.*(?:skip|xfail)|#\s*(?:noqa|type:\s*ignore|ruff:)|\bassert\s+True\b)",
+    (
+        "(?:pytest\\.(?:skip|xfail)|@.*(?:skip|xfail)|#\\s*(?:noqa"
+        "|type:\\s*ignore|ruff:)|\\bassert\\s+True\\b)"
+    ),
     re.I,
 )
 
@@ -144,7 +147,11 @@ def pinned_requirements(files: dict[str, bytes]) -> str:
         raise PolicyError("unsupported: Only Python/pytest/Ruff is supported")
     if "requirements.lock" not in files:
         raise PolicyError(
-            "needs_input: Supply requirements.lock with exact versions and SHA256 hashes (empty is valid for stdlib-only projects)"
+            (
+                "needs_input: Supply requirements.lock with exact versio"
+                "ns and SHA256 hashes (empty is valid for stdlib-only pr"
+                "ojects)"
+            )
         )
     text = files["requirements.lock"].decode()
     joined = text.replace("\\\n", " ")
@@ -153,7 +160,10 @@ def pinned_requirements(files: dict[str, bytes]) -> str:
         if not line or line.startswith("#"):
             continue
         if not re.fullmatch(
-            r"[a-zA-Z0-9_.-]+(?:\[[a-zA-Z0-9_,.-]+\])?==[a-zA-Z0-9_.+!-]+(?:\s+--hash=sha256:[a-f0-9]{64})+",
+            (
+                "[a-zA-Z0-9_.-]+(?:\\[[a-zA-Z0-9_,.-]+\\])?==[a-zA-Z0-9_.+"
+                "!-]+(?:\\s+--hash=sha256:[a-f0-9]{64})+"
+            ),
             line,
         ):
             raise PolicyError(
