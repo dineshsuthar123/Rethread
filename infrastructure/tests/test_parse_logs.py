@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Unit tests for parse_logs.py
-Member 3: DevOps Sandboxer
+Legacy structured evidence parser
 
 Run: pytest tests/test_parse_logs.py -v
 """

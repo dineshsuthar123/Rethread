@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
 RIFT 2026 - Log Aggregation & Normalization Script
-Member 3: DevOps Sandboxer
+Legacy structured evidence parser
 
 Parses outputs from Ruff, Mypy, and Pytest into a unified errors.json schema
-that the LangGraph Orchestrator (Member 2) can consume.
+that the trusted evidence normalizer can consume.
 
 OUTPUT SCHEMA (errors.json):
 [

@@ -25,10 +25,10 @@ def classify_bug_type(error: dict) -> str:
     """
     source = error.get("source", "").lower()
     message = error.get("message", "").lower()
-    # M3's parse_logs.py outputs 'code', support both 'code' and 'rule_code'
+    # The legacy parser parse_logs.py outputs 'code', support both 'code' and 'rule_code'
     rule = (error.get("code") or error.get("rule_code") or "").upper()
 
-    # If M3 already classified the type, trust it if valid
+    # If the producer already classified the type, trust it if valid
     existing_type = error.get("type", "")
     if existing_type in VALID_BUG_TYPES:
         return existing_type

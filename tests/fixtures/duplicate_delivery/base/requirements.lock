@@ -1,0 +1,1 @@
+# Standard library only. pytest and Ruff are pinned in the evaluator template.
