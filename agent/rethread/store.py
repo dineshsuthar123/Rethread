@@ -36,14 +36,7 @@ class Store:
 
     def claim(self, worker):
         with self.transaction() as db:
-            db.execute(
-                (
-                    "UPDATE jobs SET status='failed',reason='Retry limit exh"
-                    "austed',updated_at=now()\n                         WHERE"
-                    " attempts>=3 AND (status='queued' OR (status='running' "
-                    "AND lease_until<now()))"
-                )
-            )
+            self._reconcile_exhausted(db)
             row = db.execute(
                 (
                     "SELECT j.* FROM jobs j WHERE j.attempts<3\n             "
@@ -61,24 +54,74 @@ class Store:
             # Serialize concurrency admission per tenant, without holding this lock over work.
             db.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", (str(row["tenant_id"]),))
             running = db.execute(
-                (
-                    "SELECT count(*) AS count FROM jobs WHERE tenant_id=%s A"
-                    "ND status='running' AND lease_until>now()"
-                ),
+                "SELECT count(*) AS count FROM jobs WHERE tenant_id=%s "
+                "AND status='running' AND lease_until>now()",
                 (row["tenant_id"],),
             ).fetchone()["count"]
             if running >= 2:
                 return None
             return db.execute(
-                (
-                    "UPDATE jobs SET status='running',worker_id=%s,fence=fen"
-                    "ce+1, first_started_at=coalesce(first_started_at,now()),"
-                    "attempts=attempts+1,lease_until=n"
-                    "ow()+interval '60 seconds',heartbeat_at=now(),updated_a"
-                    "t=now()\n                WHERE id=%s RETURNING *"
-                ),
+                "UPDATE jobs SET status='running',worker_id=%s,fence=fence+1, "
+                "first_started_at=coalesce(first_started_at,now()),attempts=attempts+1,"
+                "lease_until=now()+interval '60 seconds',heartbeat_at=now(),updated_at=now() "
+                "WHERE id=%s RETURNING *",
                 (worker, row["id"]),
             ).fetchone()
+
+    def _reconcile_exhausted(self, db):
+        """Keep durable Case state honest after the last worker lease expires."""
+        exhausted = db.execute(
+            "SELECT id,tenant_id,case_id,kind FROM jobs WHERE attempts>=3 AND "
+            "(status='queued' OR (status='running' AND lease_until<now())) "
+            "ORDER BY created_at LIMIT 100"
+        ).fetchall()
+        for entry in exhausted:
+            # Match cancellation and fenced writes: Case lock before job lock.
+            case = None
+            if entry["case_id"]:
+                case = db.execute(
+                    "SELECT state FROM cases WHERE tenant_id=%s AND id=%s FOR UPDATE SKIP LOCKED",
+                    (entry["tenant_id"], entry["case_id"]),
+                ).fetchone()
+                if not case:
+                    continue
+            current = db.execute(
+                "SELECT id FROM jobs WHERE id=%s AND attempts>=3 AND "
+                "(status='queued' OR (status='running' AND lease_until<now())) "
+                "FOR UPDATE SKIP LOCKED",
+                (entry["id"],),
+            ).fetchone()
+            if not current:
+                continue
+            reason = "Retry limit exhausted after worker lease expiry"
+            if case:
+                state = case["state"]
+                next_state = (
+                    "ready_for_review"
+                    if entry["kind"] == "publish" and state == "publishing"
+                    else "failed"
+                    if "failed" in PROTOCOL["transitions"][state]
+                    else None
+                )
+                if next_state:
+                    db.execute(
+                        "UPDATE cases SET state=%s,reason=%s WHERE tenant_id=%s AND id=%s",
+                        (next_state, reason, entry["tenant_id"], entry["case_id"]),
+                    )
+                    self.event(
+                        db,
+                        entry["tenant_id"],
+                        entry["case_id"],
+                        "state",
+                        {"state": next_state, "reason": reason},
+                    )
+                elif state == "ready_for_review" or not PROTOCOL["transitions"][state]:
+                    reason = "Reconciled persisted Case outcome after restart"
+            db.execute(
+                "UPDATE jobs SET status=%s,reason=%s,fence=fence+1,lease_until=NULL,"
+                "updated_at=now() WHERE id=%s",
+                ("completed" if reason.startswith("Reconciled") else "failed", reason, entry["id"]),
+            )
 
     def fenced(self, db, job):
         # All mutations take Case -> job locks, matching API cancellation.

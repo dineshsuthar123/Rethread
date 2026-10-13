@@ -5,6 +5,7 @@ import {
   Routes,
   useLocation,
   useNavigate,
+  useNavigationType,
   useParams,
 } from "react-router-dom";
 import {
@@ -78,6 +79,7 @@ const statusLabel = (s: string) => s.replaceAll("_", " ");
 export function App() {
   const location = useLocation();
   const navigate = useNavigate();
+  const navigationType = useNavigationType();
   const work = location.pathname.startsWith("/studio");
   const [identity, setIdentity] = useState<Session>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -95,6 +97,24 @@ export function App() {
   const [found, setFound] = useState<Case[]>([]);
   const main = useRef<HTMLElement>(null);
   const lastRoute = useRef<string | null>(null);
+  const scrollPositions = useRef(new Map<string, number>());
+  const activeLocation = useRef(location.key);
+  useEffect(() => {
+    const previous = window.history.scrollRestoration;
+    window.history.scrollRestoration = "manual";
+    const remember = () => {
+      // A shorter destination can clamp scroll before React's route effect runs.
+      // Do not save that destination position under the previous history entry.
+      if ((window.history.state?.key || "default") !== activeLocation.current)
+        return;
+      scrollPositions.current.set(activeLocation.current, window.scrollY);
+    };
+    window.addEventListener("scroll", remember, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", remember);
+      window.history.scrollRestoration = previous;
+    };
+  }, []);
   useEffect(() => {
     void session()
       .then(setIdentity)
@@ -120,15 +140,18 @@ export function App() {
     };
     document.title = `${titles[location.pathname] || "Case replay"} · Rethread`;
     setMenu(false);
-    if (lastRoute.current === location.pathname) return;
+    if (lastRoute.current === location.key) return;
     const initial = lastRoute.current === null;
-    lastRoute.current = location.pathname;
+    lastRoute.current = location.key;
+    activeLocation.current = location.key;
     if (initial) return;
     main.current?.focus({ preventScroll: true });
-    if (location.hash) {
+    if (navigationType === "POP") {
+      window.scrollTo(0, scrollPositions.current.get(location.key) || 0);
+    } else if (location.hash) {
       document.getElementById(location.hash.slice(1))?.scrollIntoView();
     } else window.scrollTo(0, 0);
-  }, [location.pathname]);
+  }, [location.pathname, location.hash, location.key, navigationType]);
   useEffect(() => {
     const keyboard = (e: KeyboardEvent) => {
       if (

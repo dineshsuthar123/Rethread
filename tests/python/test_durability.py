@@ -97,6 +97,47 @@ def test_cancelled_fence_cannot_write_or_publish(seeded_store):
         store.finish(job)
 
 
+@pytest.mark.parametrize("outcome", ["reproducing", "ready_for_review", "publishing"])
+def test_last_expired_lease_reconciles_case_and_fences_old_worker(seeded_store, outcome):
+    store, tenant, repo, case, identity = seeded_store
+    job = store.claim("worker-before-crash")
+    for state in [
+        "capturing",
+        "reproducing",
+        "diagnosing",
+        "proposing",
+        "verifying",
+        "ready_for_review",
+        "publishing",
+    ]:
+        store.save(job, state)
+        if state == outcome:
+            break
+    with store.transaction() as db:
+        db.execute(
+            "UPDATE jobs SET attempts=3,lease_until=now()-interval '1 second',kind=%s WHERE id=%s",
+            ("publish" if outcome == "publishing" else "repair", identity),
+        )
+    assert store.claim("restarted-worker") is None
+    with store.transaction() as db:
+        result = db.execute(
+            "SELECT state,cursor FROM cases WHERE tenant_id=%s AND id=%s", (tenant, case)
+        ).fetchone()
+        expected = "failed" if outcome == "reproducing" else "ready_for_review"
+        assert result["state"] == expected
+        last_event = db.execute(
+            "SELECT payload FROM events WHERE tenant_id=%s AND case_id=%s "
+            "ORDER BY sequence DESC LIMIT 1",
+            (tenant, case),
+        ).fetchone()
+        assert last_event["payload"]["state"] == expected
+        row = db.execute("SELECT * FROM jobs WHERE id=%s", (identity,)).fetchone()
+        assert row["status"] == ("completed" if outcome == "ready_for_review" else "failed")
+        assert row["fence"] > job["fence"]
+    with pytest.raises(LeaseLost):
+        store.finish(job)
+
+
 def test_concurrent_budget_reservations_do_not_overrun_and_retries_settle_once(
     seeded_store, monkeypatch
 ):

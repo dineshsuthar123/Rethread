@@ -12,6 +12,7 @@ from .pipeline import repair
 from .planner import plan
 from .preflight import preflight
 from .publisher import publish
+from .redaction import redact
 from .sandbox import E2BProvider, SandboxUnavailable
 from .store import LeaseLost, Store
 
@@ -147,9 +148,10 @@ def main():
 
             safe_reason = (
                 str(exc)
-                if isinstance(exc, (PolicyError, SandboxUnavailable, ValueError))
+                if isinstance(exc, (PolicyError, SandboxUnavailable)) or type(exc) is ValueError
                 else f"Provider operation failed ({type(exc).__name__}); inspect the job stage"
             )
+            safe_reason = redact(safe_reason)[:500]
             if job["kind"] == "publish":
                 state = "ready_for_review"
                 safe_reason = (

@@ -92,6 +92,24 @@ test("keyboard chapter menu and command search can close without trapping focus"
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
+
+test("browser Back restores the previous reading position", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  await page.evaluate(() => window.scrollTo(0, 640));
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(640);
+  // Activate the route without the test driver scrolling its offscreen header into view.
+  await page
+    .getByRole("link", { name: "Field notes", exact: true })
+    .evaluate((link: HTMLAnchorElement) => link.click());
+  await expect(page).toHaveURL(/\/docs/);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/$/);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(640);
+});
 test("expired session is explicit, login and connection have usable recovery", async ({
   page,
 }) => {
@@ -236,7 +254,7 @@ test("keyboard skip link, mobile tabs, 200% zoom and tiny identity remain usable
     page.getByRole("tab", { name: "Repair", exact: true }),
   ).toHaveAttribute("aria-selected", "true");
   await page.goto("/");
-  await page.setViewportSize({width:640,height:200});
+  await page.setViewportSize({ width: 640, height: 200 });
   await page.evaluate(() => {
     document.body.innerHTML =
       '<main style="padding:40px;background:#f3f0e8;display:flex;gap:32px">' +
