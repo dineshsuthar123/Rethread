@@ -910,6 +910,8 @@ code {
 }
 .skip-link {
   position: fixed;
+  opacity: 0;
+  pointer-events: none;
   transform: translateY(-200%);
   top: 10px;
   left: 20px;
@@ -919,6 +921,8 @@ code {
   z-index: 100;
 }
 .skip-link:focus {
+  opacity: 1;
+  pointer-events: auto;
   transform: translateY(0);
   top: 10px;
 }
