@@ -22,7 +22,8 @@ Unsupported repositories and incomplete reproductions receive explicit outcomes.
 
 The owner requires **free-only hosting**. The existing Vercel frontend and Render
 free API are reused. A trusted GitHub Actions batch worker controls E2B sandboxes;
-jobs/checkpoints/events persist in PostgreSQL from an authorized free account.
+jobs/checkpoints/events will persist in the owner's existing Supabase Free
+PostgreSQL after private connection setup and migration.
 Cold starts, queue delays and provider quotas apply. E2B credits are one-time,
 not unlimited free execution. Paid infrastructure and paid LLM/sandbox usage
 are disabled. [Hosting boundaries](docs/free-hosting.md).
@@ -44,7 +45,7 @@ requires owner approval before a separate idempotent draft-PR operation.
 
 ## Local development
 
-Use Node 22+ and Python 3.12?3.14. Start a disposable PostgreSQL database for
+Use Node 22+ and Python 3.12 through 3.14. Start a disposable PostgreSQL database for
 integration tests. Configure private settings in `.env.rethread.local`, using
 `.env.example` as the variable catalog. Never commit values or put them in chat.
 
@@ -57,7 +58,9 @@ npm run dev -w backend
 npm run dev -w frontend
 ```
 
-Python owner commands: `uv run --env-file .env.rethread.local python -m agent.rethread.worker`.
+Local worker: `uv run --env-file .env.rethread.worker.local python -m agent.rethread.worker`.
+That ignored file uses the restricted worker database login and provider keys,
+as described in the deployment runbook.
 No integration credentials are needed to explore `/studio/cases/example`.
 
 ```sh

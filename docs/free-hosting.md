@@ -9,7 +9,7 @@ is not the active Blueprint.
 | --- | --- | --- |
 | Frontend | Existing Vercel project, renamed Rethread | Preview protection and Hobby quotas apply |
 | API | Existing Render service, retained `free` plan | Sleeps/cold starts; no continuous-service guarantee |
-| Durable jobs/data | Owner's Neon Free or existing Supabase Free PostgreSQL | Account/connection required; quotas and pause behavior apply |
+| Durable jobs/data | Owner's existing Supabase Free PostgreSQL | Private connection required; quotas and pause behavior apply |
 | Trusted worker | GitHub Actions standard Linux runner in this public repository | Event dispatch, queue delay, bounded batch, no always-on process |
 | Target execution | E2B Hobby one-time credits | Stops at allocated credits; no paid top-up or host fallback |
 | Planner | Owner-confirmed Groq free-tier key | Rate/token quota failures stay explicit; paid destinations blocked |
@@ -51,11 +51,10 @@ execution). Each create attempt conservatively charges its 300-second default
 or automatic top-up. Shared account usage can consume credits outside Rethread,
 so owner/provider limits still apply. [E2B pricing](https://e2b.dev/pricing).
 
-Neon Free advertises persistent storage and compute quotas with scale-to-zero;
-Supabase Free has database/storage quotas and inactivity behavior. Neither
-provides an unlimited production entitlement. Inspect the chosen existing
-account before creating or migrating anything. The unrelated existing Render
-database has not been reused. [Neon Free](https://neon.com/pricing),
+The owner selected existing Supabase Free. Its database/storage quotas and
+inactivity behavior apply. Inspect and back up that existing project before
+forward migrations; no Supabase project has been created or modified yet.
+The unrelated existing Render database has not been reused.
 [Supabase Free](https://supabase.com/pricing).
 
 Standard GitHub-hosted runners are free for public repositories under GitHub's

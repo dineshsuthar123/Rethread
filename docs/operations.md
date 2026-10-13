@@ -55,9 +55,10 @@ Original repository commits and PRs are not deleted by retention cleanup.
 ## Backup, restore and migration recovery
 
 ```sh
-pg_dump --format=custom --file=rethread-backup.dump "$DATABASE_URL"
+pg_dump --format=custom --file=rethread-backup.dump "$MIGRATION_DATABASE_URL"
 createdb rethread_restore_test
 pg_restore --dbname="$RESTORE_TEST_URL" rethread-backup.dump
+DATABASE_URL="$MIGRATION_DATABASE_URL" RESTORE_DATABASE_URL="$RESTORE_TEST_URL" uv run python deploy/verify_restore.py
 ```
 
 Keep dumps encrypted and outside Git; they contain private source/evidence and
@@ -65,13 +66,24 @@ encrypted login tokens. Verify row counts, migration checksums, event cursor
 continuity, artifact content hashes and representative exports after restoring
 into a separate test database. Record backup ID/time and restore results.
 Never test restore by overwriting production. Configure provider backup/PITR
-retention before accepting real private repository Cases.
+retention before accepting real private repository Cases. The selected Supabase
+Free account requires an owner-managed manual backup procedure; do not enable
+paid PITR under the current authorization. `verify_restore.py` refuses a restore
+target whose database name does not end in `_test`, compares every Rethread
+table's row digest/count, verifies cursor continuity and decompresses/hash-checks
+artifacts. Pause source writes during the dump/comparison to avoid drift.
 
 Migrations are additive, checksum-protected and serialized by advisory lock.
 The current schema leaves legacy Supabase tables intact. Roll back application
 images first while retaining additive columns/tables; do not drop the schema.
 Forward recovery reruns the migrator idempotently. A destructive future
 migration needs a verified backup and a separate recovery procedure.
+
+The local acceptance exercise restored all six migrations into a separate
+database, compared 24 tables, 49 Cases, 83 events and one compressed artifact.
+An intentionally failing transaction left neither its probe table nor migration
+record, and the normal migrator reran successfully. No production schema was
+rolled back. See acceptance.md for the exact environment and limitations.
 
 ## Deploy rollback
 

@@ -24,9 +24,12 @@ Copy `.env.example` to the ignored `.env.rethread.local` for owner tooling.
 Configure API secrets through Render and worker secrets through GitHub Actions.
 No secrets go into Vercel VITE variables, image layers, build arguments or chat.
 API loads this private local file; Python owner commands use
-`uv run --env-file .env.rethread.local`. Docker receives provider environment
-variables at runtime. Use one provider/model and set conservative token prices
-from the provider's current published rates before admitting LLM jobs.
+`uv run --env-file .env.rethread.local`. For a local worker, prepare an ignored
+`.env.rethread.worker.local` containing the worker's `DATABASE_URL` and provider
+keys, and use that file instead of the API login. Docker receives provider environment
+variables at runtime. Free-only mode admits only owner-confirmed Groq free-tier
+access; monetary ceilings remain zero. It never switches to a paid endpoint.
+Confirm and allocate remaining E2B Hobby credits before allowing sandbox work.
 
 API requires database runtime URL, session encryption key (32 random bytes,
 base64), public frontend origin, GitHub App ID/private key/slug, GitHub App
@@ -34,6 +37,40 @@ client ID/client secret and webhook secret. Worker requires its own runtime DB
 URL, App ID/private key, public origin, E2B key/template, LLM key/model and
 budget limits. Deployment tooling additionally needs Render API access.
 The migrator uses `MIGRATION_DATABASE_URL`, not either runtime login.
+
+## Existing Supabase Free setup
+
+The owner selected their existing Supabase Free project. Account access is
+currently unavailable to this workspace: `supabase projects list` requires a
+login, and the database fields in `.env.rethread.local` remain unconfigured.
+Configure access privately, never through chat. This is the remaining database dependency.
+
+1. In the existing project's dashboard, confirm the Free plan, inspect public
+   tables/roles and take a backup before migration. Do not reset the project or
+   change its existing RLS policies.
+2. Obtain the connection strings from **Connect**. Use direct PostgreSQL for
+   owner migrations/backups where IPv6 works. Use the free **Session pooler**
+   on port 5432 for IPv4 runtime connections; no paid IPv4 add-on is needed.
+   This implementation uses session state and prepared statements, so do not
+   use the transaction pooler on 6543. See the official
+   [connection guide](https://supabase.com/docs/guides/database/connecting-to-postgres).
+3. Put the owner URL in `MIGRATION_DATABASE_URL` privately. Run the six forward
+   migrations and apply `deploy/roles.sql`. Create separate password-protected
+   LOGIN roles granted `rethread_api` and `rethread_worker`; pooled usernames
+   include the project reference. Validate each restricted role's access.
+4. Put only the API runtime URL in Render `DATABASE_URL`, and only the worker
+   runtime URL in Actions `RETHREAD_WORKER_DATABASE_URL`. Require verified TLS
+   and supply the provider CA privately if the local trust store needs it.
+5. Keep the `rethread` schema outside Supabase's exposed Data API schemas. The
+   product uses its authenticated Express API; its new schema is not an RLS
+   protected browser API. Existing public RLS definitions remain intact.
+6. Test migration checksums, tenant denial, cursor replay, artifact export and
+   restricted-role startup on the actual project before admitting real Cases.
+
+Free Supabase does not supply the paid PITR entitlement. The owner must choose
+and test a private manual backup destination and cadence within free storage
+limits, following the official [backup guidance](https://supabase.com/docs/guides/platform/backups).
+The local restore exercise is not a hosted backup or recovery promise.
 
 GitHub App repository permissions: contents read/write, pull requests
 read/write, checks read/write, Actions read, metadata read. Subscribe to
