@@ -64,3 +64,8 @@
   PKCE and Secure/HttpOnly/SameSite=Lax cookie. The owner's actual browser login
   persisted a tenant-bound encrypted session; GitHub identity and installation
   access were checked. Fixture addition still returns 403, credits remain zero.
+- The owner connected Rethread in the browser; the next PR update persisted
+  signed webhook deliveries and one preflight job. Durable API wakeup triggered
+  Actions run 38553518160. The worker recorded the actual missing-template
+  failure before target execution; no guard pass was claimed. Provider delivery
+  history returned 404, so native redelivery remains untested.

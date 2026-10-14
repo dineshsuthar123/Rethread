@@ -170,6 +170,21 @@
     "encryptedProviderTokenVerified": true,
     "ownAppInstallationAccessible": true
   },
+  "nativeWebhookTrigger": {
+    "connectedRepository": "dineshsuthar123/Rethread",
+    "signedDeliveryPersistenceVerified": true,
+    "observedNativeDeliveries": 2,
+    "automaticWorkerRun": 38553518160,
+    "workerActor": "rethread-agent[bot]",
+    "workerSourceCommit": "f59d3105d8c35b7ebc9b9253621d5bd036518b39",
+    "preflightJobStatus": "failed",
+    "reason": "E2B credentials and a validated template are required",
+    "nativeRedeliveryTested": false,
+    "deliveryHistoryEndpointStatus": 404,
+    "unsignedWebhookStatus": 401,
+    "unsignedDeliveryPersisted": false,
+    "scope": "Actual PR update, persisted job and App-triggered worker; no guard pass or target execution"
+  },
   "remaining": {
     "fixtureInstallation": "owner settings required; 403 with CLI and App user token",
     "sandboxCreditAllocation": 0,

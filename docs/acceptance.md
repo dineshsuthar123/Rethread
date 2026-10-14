@@ -55,7 +55,8 @@ the control repository. The registered worker workflow is active. App keys and
 webhook settings were staged privately, including TLS verification; control
 dispatch settings and confirmed free-entitlement variables are configured.
 Temporary inspection/dispatch installation tokens were revoked after use.
-Actual signed webhook persistence and the repair journey remain unverified.
+Actual signed webhook persistence is now verified; the repair journey remains
+unverified.
 
 Both free entitlement flags are confirmed, but sandbox credit allocation remains
 0 and the template is absent. No template, inference or sandbox execution was
@@ -114,7 +115,20 @@ completed the actual browser sign-in. The resulting encrypted session has its
 tenant membership and eight-hour expiration; its provider token authenticated
 the matching GitHub identity and access to installation `171316286`.
 Browser control is unavailable here; authenticated Studio interaction, logout
-and repair approval through that browser remain to be exercised.
+and repair approval through that browser remain to be fully exercised.
+
+The owner connected Rethread itself through the browser. The subsequent PR #3
+update persisted native signed webhook delivery records and one preflight job.
+The API's durable wakeup dispatched
+[worker run 38553518160](https://github.com/dineshsuthar123/Rethread/actions/runs/38553518160)
+at `f59d310...`; that process completed and recorded the preflight job as
+**failed**, reason `E2B credentials and a validated template are required`.
+No guard passed and no target execution occurred. GitHub's App delivery-history
+endpoint returned 404 under both supported API versions, so native provider
+redelivery was not exercised; controlled duplicate-delivery/job tests remain
+the evidence for that property.
+A negative request to the actual webhook API without a signature returned 401
+and persisted no delivery record.
 
 ## Prepared live fixture
 
@@ -261,7 +275,7 @@ back to the removed privileged legacy runtime.
 | --- | --- | --- |
 | Build template and exercise isolation/cancellation | E2B Hobby | Entitlement confirmed, key authenticated; allocate a positive bounded amount within verified remaining free credits, with billing/top-ups disabled |
 | Generate a real bounded candidate | Groq free tier | Key/model authenticated and staged, entitlement confirmed; replay and credit dependencies must pass before inference |
-| Actual fixture connection and signed webhook persistence | Rethread GitHub App/API | Add repository 1418721552 to installation 171316286 in GitHub settings; CLI and App-user attempts returned 403. User login and DB are verified |
+| Actual fixture connection | Rethread GitHub App/API | Add repository 1418721552 to installation 171316286 in GitHub settings; CLI and App-user attempts returned 403. User login, control-repo connection and signed webhook persistence are verified |
 | Hosted failure -> approval -> one draft PR -> later recurrence | rethread-python-acceptance | Complete the template/credit/installation dependencies, then exercise the real Case journey in the signed-in Studio |
 | Backup storage/cadence and recovery with actual user data | Existing Supabase Free project | Preserve the private encrypted dumps and AES key in owner backup storage; define/test cadence before private Cases |
 
