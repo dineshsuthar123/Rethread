@@ -1,8 +1,9 @@
 # Acceptance evidence
 
 Initial evidence 2026-10-13 UTC; provider setup update 2026-10-14. **The hosted repair release is incomplete.** The
-frontend and existing free API are deployed; actual DB/App/worker/E2B/LLM
-acceptance is blocked by private access. No paid plan, worker, database, top-up
+frontend and existing free API are deployed; actual DB/worker/E2B/LLM and user-login
+acceptance remain blocked. App authentication and control installation access
+are now verified. No paid plan, worker, database, top-up
 or payment method was created. The owner selected existing Supabase Free.
 
 ## Source and deployed resources
@@ -26,26 +27,58 @@ or payment method was created. The owner selected existing Supabase Free.
   Initial latest-version deploy `dep-db76fnrl550s73au8tkg` became **live**;
   its health identified the exact `9f53fc3...` commit. Rollback/forward IDs are
   recorded below. API readiness-fix deploy `dep-db76jurrjlhs73a41a8g`
-  became live. Current private-settings deploy `dep-db7ktuu7bikc73b8k0i0`
+  became live. Current App/control-settings deploy `dep-db7ldle7bikc73ba5r2g`
   is **live**, and its health identifies `ecfb3a4...`.
 - `render.yaml` passed the authenticated Blueprint validator with one existing
   free API action. It contains no paid worker/database. The unrelated existing
   Render database was left untouched.
 
 The API returns genuine liveness. `/api/ready` correctly returns **503 blocked**
-with database/worker/loginConfigured/appConfigured/repairConfigured false and
-an explicit database setup reason. No fixture is stored as a hosted verified Case.
+with database/worker/repairConfigured false, loginConfigured/appConfigured true
+and an explicit database setup reason. Configuration presence does not establish
+a completed user login. No fixture is stored as a hosted verified Case.
 
 On 2026-10-14, the E2B key passed read-only sandbox inventory authentication
 without creating a sandbox; it was stored as `RETHREAD_E2B_API_KEY` in Actions.
 The Groq key/model were already authenticated and staged. A valid 32-byte
 session encryption key was generated privately and configured on the existing
 Render API with the verified frontend origin, FREE_ONLY and Actions worker mode.
-No secret values were printed or committed. The GitHub App fields are present
-but unusable: private-key parsing fails and the supplied slug is not a valid
-bare slug or App URL. Database URLs remain empty, Supabase CLI is not signed in,
-free-entitlement confirmations remain false and sandbox credit allocation is 0.
-No template, inference or sandbox execution was admitted under those settings.
+No secret values were printed or committed. After the owner's corrections,
+the App JWT authenticated (`GET /app` 200); its slug/client ID match, and
+contents, pull requests, checks and Actions write permissions plus the
+`pull_request` subscription were verified. Installation `171316286` includes
+the control repository. The registered worker workflow is active. App keys and
+webhook settings were staged privately, including TLS verification; control
+dispatch settings and confirmed free-entitlement variables are configured.
+Temporary inspection installation tokens were revoked after use. Actual login,
+signed delivery persistence and worker dispatch still require the database.
+
+The supplied Supabase direct URI resolves only to IPv6. Both ordinary resolution
+and an explicit IPv6 connection failed from this workspace; verified-TLS
+connection attempts timed out. `MIGRATION_DATABASE_URL` remains a placeholder.
+The free shared Session pooler URI (5432) is required before read-only inspection,
+backup and additive migration. No hosted data/schema was changed. Both free
+entitlement flags are now confirmed, but sandbox credit allocation remains 0
+and the template is absent. No template, inference or sandbox execution was
+admitted under those settings.
+
+## Prepared live fixture
+
+Created [rethread-python-acceptance](https://github.com/dineshsuthar123/rethread-python-acceptance)
+as the dedicated public, disposable repository for the authorized live journey.
+Repository ID `1418721552`, base branch `acceptance-base`, pinned commit
+`a4d9f37696a35131233937165069708c80135a42`. It contains the authored standard-library
+SQLite fixture and original tests; no customer data or runtime secrets.
+[Actions run 38548518554](https://github.com/dineshsuthar123/rethread-python-acceptance/actions/runs/38548518554)
+completed with Ruff passing and pytest reporting **1 failed, 1 passed**:
+`test_retry_delivery` observes two queued records instead of one. This is actual
+GitHub CI evidence of the captured failure, not hosted Rethread or E2B acceptance.
+
+The App inventory currently includes only Rethread. Adding the fixture with
+the authenticated account returned 403: the workspace cannot modify this App's
+installation selection. The owner must add the fixture in installation settings.
+No repair branch, repair PR or recurrence branch has been created yet. Retain
+fixture artifacts until the owner authorizes cleanup.
 
 ## Automated evidence
 
@@ -167,12 +200,12 @@ not exercised. Never roll back to the removed privileged legacy runtime.
 
 | Blocked action | Resource | Minimal private owner setup |
 | --- | --- | --- |
-| Inspect/backup/migrate persistent data; connect API/worker | Existing Supabase Free project | Sign in with Supabase CLI/provider; privately supply migrator URL, then create separate runtime logins as deployment.md specifies |
-| Real user sign-in, selected repo access, webhooks and workflow dispatch | Rethread GitHub App | Correct the bare slug and provide a parseable downloaded PEM key privately; verify callback/permissions and install on selected repo/control repo; provide installation IDs |
-| Run the durable trusted worker | Rethread Actions review.yml | Configure the listed RETHREAD_ runtime secrets/variables, then dispatch the implementation ref |
-| Build template and exercise isolation/cancellation | E2B Hobby | Key authenticated read-only and stored in Actions; remaining free entitlement/credits must be confirmed and allocated before template/execution work |
-| Generate a real bounded candidate | Groq free tier | Newly supplied private key/model authenticated (model inventory 200), staged as Actions secret/variable; free entitlement confirmation remains false, so no inference is admitted |
-| Hosted failure -> approval -> one draft PR -> later recurrence | Disposable authorized Python repo | All above credentials plus a specifically authorized fixture repository/installation and verified frontend origin |
+| Inspect/backup/migrate persistent data; connect API/worker | Existing Supabase Free project | Copy the actual free Session pooler URI on 5432 from Dashboard Connect into private MIGRATION_DATABASE_URL; direct IPv6 times out. After backup, create restricted runtime logins as deployment.md specifies |
+| Actual user sign-in and signed webhook persistence | Rethread GitHub App/API | App credentials/permissions/control installation are verified and staged; connect migrated database, then exercise the actual callback and delivery path |
+| Run the durable trusted worker | Rethread Actions review.yml | Provider keys and free variables are staged; worker DB URL and validated E2B template remain required before dispatch |
+| Build template and exercise isolation/cancellation | E2B Hobby | Entitlement confirmed, key authenticated; allocate a positive bounded amount within verified remaining free credits, with billing/top-ups disabled |
+| Generate a real bounded candidate | Groq free tier | Key/model authenticated and staged, entitlement confirmed; replay and credit dependencies must pass before inference |
+| Hosted failure -> approval -> one draft PR -> later recurrence | rethread-python-acceptance | Add repository 1418721552 to installation 171316286 in GitHub settings; workspace installation modification returned 403. Complete the preceding dependencies |
 
 Use ignored private environment files or provider settings; never put secrets
 in chat, VITE variables, commits or build arguments. [Deployment](deployment.md)

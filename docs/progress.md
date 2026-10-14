@@ -34,3 +34,15 @@
   and privately configured a valid API session key and verified frontend origin;
   the existing free API redeploy is live. App private-key/slug validation failed;
   database URLs and free-credit confirmation still block live acceptance.
+- After private corrections, verified App authentication, required write
+  permissions/events and control installation 171316286. Staged App/webhook and
+  control-dispatch settings; API deploy dep-db7ldle7bikc73ba5r2g is live with the
+  expected ecfb3a4 build. Confirmed free-entitlement variables are staged.
+- Created the dedicated disposable rethread-python-acceptance repository;
+  pinned base a4d9f376 has a real Actions failure (one test fails, one passes,
+  Ruff passes). Adding it to the App installation returned 403; owner selection
+  is required. No repair PR or sandbox was created.
+- The supplied Supabase direct URI resolves only to IPv6 and times out from
+  this workspace. Requested the actual free Session pooler migrator URI on
+  port 5432. No hosted DB inspection/migration has occurred; sandbox credit
+  allocation remains zero and the template is absent.

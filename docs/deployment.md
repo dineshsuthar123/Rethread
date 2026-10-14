@@ -41,9 +41,10 @@ The migrator uses `MIGRATION_DATABASE_URL`, not either runtime login.
 ## Existing Supabase Free setup
 
 The owner selected their existing Supabase Free project. Account access is
-currently unavailable to this workspace: `supabase projects list` requires a
-login, and the database fields in `.env.rethread.local` remain unconfigured.
-Configure access privately, never through chat. This is the remaining database dependency.
+not signed in through Supabase CLI. A direct database URI was supplied privately,
+but its IPv6-only endpoint times out from this workspace. The actual free Session
+pooler URI must be copied from Dashboard Connect into `MIGRATION_DATABASE_URL`.
+Configure access privately, never through chat. No live schema has been modified.
 
 1. In the existing project's dashboard, confirm the Free plan, inspect public
    tables/roles and take a backup before migration. Do not reset the project or
@@ -80,6 +81,14 @@ installation, installation_repositories and pull_request events. Install only
 on selected authorized repositories. Set user callback to
 `<verified-frontend-origin>/api/auth/callback` and webhook to the verified
 Render API's `/api/webhooks/github`. Keep private keys out of sandboxes.
+
+The App's current credentials, permissions and control installation `171316286`
+were verified. Control dispatch settings are staged for repository ID `1161587671`
+and ref `rethread/implementation`. The prepared disposable fixture is
+`dineshsuthar123/rethread-python-acceptance`, ID `1418721552`. Add it to the selected
+installation through [GitHub settings](https://github.com/settings/installations/171316286);
+this workspace's authenticated installation-selection request returned 403.
+Its base commit and real failing CI evidence are recorded in acceptance.md.
 
 ## Build, migrate, and run
 
