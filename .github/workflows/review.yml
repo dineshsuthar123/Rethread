@@ -1,5 +1,5 @@
-# Reuses the registered workflow path so the implementation branch can be
-# dispatched without merging main. Repository code is never executed here.
+# Runs trusted orchestration from main. Target repository code is executed
+# only inside the isolated sandbox provider.
 name: Rethread trusted worker
 on:
   workflow_dispatch:

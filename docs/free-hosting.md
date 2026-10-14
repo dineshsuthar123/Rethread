@@ -16,9 +16,8 @@ is not the active Blueprint.
 
 The database queue remains authoritative. A trigger writes a durable worker
 wakeup after job insertion. The API dispatches only the trusted control
-repository's registered `review.yml` path at the implementation ref. It never
-dispatches arbitrary target code. The existing path lets the branch run without
-merging main. Target source and dependency/test execution remain inside E2B.
+repository's registered `review.yml` path at `main`. It never dispatches
+arbitrary target code. Target source and dependency/test execution remain inside E2B.
 The Actions worker drains at most two jobs, checkpoints each stage, and exits
 when idle. Active jobs keep fenced leases; a later invocation recovers expiry.
 Duplicate dispatches cannot duplicate a finalized job/PR.
@@ -27,14 +26,13 @@ Dispatch failures are retained in `worker_wakeups`; the next authenticated API
 request retries after a cooldown. The owner can also run:
 
 ```sh
-gh workflow run review.yml --repo dineshsuthar123/Rethread --ref rethread/implementation
+gh workflow run review.yml --repo dineshsuthar123/Rethread --ref main
 ```
 
 There is no promise of unattended recovery while both the free API and Actions
-worker are asleep. GitHub scheduled workflows require the default branch; main
-has not been modified. A scheduled wakeup can be enabled only after the owner
-separately approves the default-branch change. The UI keeps actual queued state
-and never fabricates progress while waiting.
+worker are asleep. Scheduled wakeup is not configured; use event/manual
+dispatch on main. The UI keeps actual queued state and never fabricates progress
+while waiting.
 
 Configure a repository-scoped GitHub App installation on the trusted control
 repository with Actions write and contents read for dispatch. Target access is

@@ -1,7 +1,7 @@
 name: Rethread checks
 on:
   push:
-    branches: [main, rethread/implementation]
+    branches: [main]
   pull_request:
 permissions:
   contents: read

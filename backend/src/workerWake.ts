@@ -51,7 +51,7 @@ export async function wakeWorker() {
       {
         method: "POST",
         body: JSON.stringify({
-          ref: process.env.CONTROL_REF || "rethread/implementation",
+          ref: process.env.CONTROL_REF || "main",
         }),
       },
     );

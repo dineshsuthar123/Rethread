@@ -69,3 +69,7 @@
   Actions run 38553518160. The worker recorded the actual missing-template
   failure before target execution; no guard pass was claimed. Provider delivery
   history returned 404, so native redelivery remains untested.
+- 2026-10-14: The owner explicitly requested pushing the implementation to main
+  and keeping the repository clean. Prepared main deployment/dispatch defaults
+  and updated the runbooks. Original local brand/test input folders are preserved
+  with local Git exclusions; secrets and private backups remain ignored.

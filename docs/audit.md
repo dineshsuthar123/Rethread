@@ -2,7 +2,8 @@
 
 Initial audit: 2026-10-13, before implementation. `git fetch origin` confirmed
 local HEAD and `origin/main` at `5ef799bdd45024a6b2d93d65b884272e93f1eae8`.
-Work stays on `rethread/implementation`; main is not merged or rewritten.
+Implementation used `rethread/implementation`. The owner explicitly authorized
+integration into `main` and branch cleanup on 2026-10-14; no force push is needed.
 No applicable AGENTS.md was found. User-owned untracked `contents/` and
 `test-repo-*` directories are preserved. The supplied brand kit is the identity
 source; its example data is illustrative.

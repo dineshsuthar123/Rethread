@@ -5,7 +5,7 @@ services:
     name: rethread-api
     runtime: docker
     repo: https://github.com/dineshsuthar123/Rethread
-    branch: rethread/implementation
+    branch: main
     dockerfilePath: ./deploy/api.Dockerfile
     dockerContext: .
     plan: free
@@ -48,6 +48,6 @@ services:
       - key: CONTROL_REPOSITORY_ID
         value: 1161587671
       - key: CONTROL_REF
-        value: rethread/implementation
+        value: main
       - key: CONTROL_INSTALLATION_ID
         sync: false

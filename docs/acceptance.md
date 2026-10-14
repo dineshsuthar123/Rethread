@@ -11,8 +11,10 @@ or payment method was created. The owner selected existing Supabase Free.
 
 - Repository: [dineshsuthar123/Rethread](https://github.com/dineshsuthar123/Rethread),
   ID `1161587671`, renamed from Rift; old URL redirects.
-- Branch: `rethread/implementation`. Main remains
-  `5ef799bdd45024a6b2d93d65b884272e93f1eae8`; no merge or force push.
+- Implementation branch: `rethread/implementation`, based on the inspected
+  original main `5ef799bdd45024a6b2d93d65b884272e93f1eae8`. The owner explicitly
+  authorized integration into `main` on 2026-10-14. Hosted repair acceptance is
+  still incomplete; this instruction changes source integration, not its evidence.
 - Frontend source: `9f53fc36d9ae2491c484770146e7a0b3aa6e970a`.
   Current API/worker TLS setup source:
   `e8f1cf9fc9e6f009c74d74b7c5f04e7ed493e29b`.
@@ -289,5 +291,5 @@ credentials. The demo remains explicitly labeled.
 The original always-on architecture cannot be delivered under the owner's
 free-only constraint. The implemented Actions batches/Render cold starts and
 one-time sandbox credits have finite availability/quotas. No paid substitute,
-host sandbox fallback, fake completion, auto-merge or default-branch change
-was used.
+host sandbox fallback, fake completion or automatic repair merge was used.
+The owner separately authorized this implementation's integration into main.

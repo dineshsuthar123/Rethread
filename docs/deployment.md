@@ -9,7 +9,8 @@ in acceptance.md after each verified deployment.
 
 - GitHub repository ID `1161587671`, renamed to
   `dineshsuthar123/Rethread`; the old URL redirects. Branch
-  `rethread/implementation` is the deployment source. Do not merge main.
+  `main` is the deployment source following the owner's explicit integration
+  instruction on 2026-10-14. Hosted repair release gates still apply.
 - Vercel project `prj_y6qMBdujlnf4ELf7fZLiyJMirzd5`, workspace
   `team_z2VLeehZ3vv2r2hEfSFKEH3a`, previously named `rift-cicd`.
   The other local `frontend` project link is not reused.
@@ -92,7 +93,7 @@ Render API's `/api/webhooks/github`. Keep private keys out of sandboxes.
 
 The App's current credentials, permissions and control installation `171316286`
 were verified. Control dispatch settings are staged for repository ID `1161587671`
-and ref `rethread/implementation`. The prepared disposable fixture is
+and ref `main`. The prepared disposable fixture is
 `dineshsuthar123/rethread-python-acceptance`, ID `1418721552`. Add it to the selected
 installation through [GitHub settings](https://github.com/settings/installations/171316286);
 this workspace's authenticated installation-selection request returned 403.
@@ -148,8 +149,8 @@ Deploy Vercel from the repository root. `vercel.json` builds the canonical
 frontend workspace and outputs frontend/dist. It uses same-origin `/api`
 rewrites, SPA fallback, self-hosted fonts and security headers. Replace the API
 destination with the actual verified service URL before hosted acceptance.
-Use a branch preview while main remains unchanged. Rebuild if the origin or
-rewrites change. Verify Set-Cookie, callback, logout, CSRF and cursor polling
+The verified protected preview remains the current frontend origin. Rebuild if
+the origin or rewrites change. Verify Set-Cookie, callback, logout, CSRF and cursor polling
 on the actual frontend hostname. Polling is deliberate: bounded responses
 avoid depending on a long-lived proxy stream.
 
