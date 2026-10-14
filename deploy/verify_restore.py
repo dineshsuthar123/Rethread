@@ -17,6 +17,8 @@ from psycopg import sql
 def inspect(url, require_test=False):
     with psycopg.connect(url) as db:
         db.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
+        # Compare instants consistently across provider/local server time zones.
+        db.execute("SET LOCAL TIME ZONE 'UTC'")
         if require_test:
             name = db.execute("SELECT current_database()").fetchone()[0]
             if not name.endswith("_test"):
