@@ -16,14 +16,16 @@ Guard stages, evidence, repository memory and light/dark themes.
 Python with pytest and Ruff is exercised with a controlled duplicate-webhook
 fixture. The repair uses one transaction for the event claim and durable outbox
 insert. Tests demonstrate base failure, candidate success and guard recurrence.
-Hosted production integration remains gated on real GitHub App, database,
-sandbox and LLM credentials; local emulators are not live provider evidence.
+The hosted Supabase schema, restricted runtime logins, actual GitHub user login
+and idle Actions worker are verified. Hosted repair acceptance still requires
+a validated E2B template, allocated free credits and fixture installation access;
+local emulators are not live repair evidence.
 Unsupported repositories and incomplete reproductions receive explicit outcomes.
 
 The owner requires **free-only hosting**. The existing Vercel frontend and Render
 free API are reused. A trusted GitHub Actions batch worker controls E2B sandboxes;
-jobs/checkpoints/events will persist in the owner's existing Supabase Free
-PostgreSQL after private connection setup and migration.
+jobs/checkpoints/events persist in the owner's existing Supabase Free
+PostgreSQL through separate API and worker logins with verified TLS.
 Cold starts, queue delays and provider quotas apply. E2B credits are one-time,
 not unlimited free execution. Paid infrastructure and paid LLM/sandbox usage
 are disabled. [Hosting boundaries](docs/free-hosting.md).

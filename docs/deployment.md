@@ -40,11 +40,13 @@ The migrator uses `MIGRATION_DATABASE_URL`, not either runtime login.
 
 ## Existing Supabase Free setup
 
-The owner selected their existing Supabase Free project. Account access is
-not signed in through Supabase CLI. A direct database URI was supplied privately,
-but its IPv6-only endpoint times out from this workspace. The actual free Session
-pooler URI must be copied from Dashboard Connect into `MIGRATION_DATABASE_URL`.
-Configure access privately, never through chat. No live schema has been modified.
+The owner's existing Supabase Free project is connected through the shared
+Session pooler on 5432. Verified-TLS inspection found no public/rethread tables
+before migration. An encrypted full pg_dump archive was checked, the six
+additive migrations applied and reran idempotently, and separate restricted
+runtime logins were tested and staged. A copy of all 24 new Rethread tables was
+restored into a separate local test database and compared successfully.
+Provider-managed schemas remain intact. See acceptance.md for the tested scope.
 
 1. In the existing project's dashboard, confirm the Free plan, inspect public
    tables/roles and take a backup before migration. Do not reset the project or
@@ -61,12 +63,18 @@ Configure access privately, never through chat. No live schema has been modified
    include the project reference. Validate each restricted role's access.
 4. Put only the API runtime URL in Render `DATABASE_URL`, and only the worker
    runtime URL in Actions `RETHREAD_WORKER_DATABASE_URL`. Require verified TLS
-   and supply the provider CA privately if the local trust store needs it.
+   using `sslmode=verify-full`. The API URL uses
+   `sslrootcert=/app/deploy/certs/supabase-root-ca.pem`; Actions supplies
+   `PGSSLROOTCERT` from the checkout. Local owner URLs need the absolute local
+   certificate path, with spaces percent-encoded. Public trust anchors and their
+   pinned official provenance are in `deploy/certs/README.md`; they are not keys.
 5. Keep the `rethread` schema outside Supabase's exposed Data API schemas. The
    product uses its authenticated Express API; its new schema is not an RLS
    protected browser API. Existing public RLS definitions remain intact.
-6. Test migration checksums, tenant denial, cursor replay, artifact export and
-   restricted-role startup on the actual project before admitting real Cases.
+6. Verify checksums and restricted-role startup before admitting real Cases.
+   API/worker logins must have neither schema/database CREATE nor access to Auth
+   data. `anon` and `authenticated` have no USAGE on the new schema. Exercise
+   tenant denial, cursor replay and artifact export during the live Case journey.
 
 Free Supabase does not supply the paid PITR entitlement. The owner must choose
 and test a private manual backup destination and cadence within free storage
@@ -89,6 +97,10 @@ and ref `rethread/implementation`. The prepared disposable fixture is
 installation through [GitHub settings](https://github.com/settings/installations/171316286);
 this workspace's authenticated installation-selection request returned 403.
 Its base commit and real failing CI evidence are recorded in acceptance.md.
+Actual owner browser login and selected-control installation access are now
+verified. A repository-scoped App token dispatched the idle trusted worker;
+GitHub returned its exact run ID, and that run completed successfully against
+Supabase. Repair remains gated on the template and allocated free credits.
 
 ## Build, migrate, and run
 

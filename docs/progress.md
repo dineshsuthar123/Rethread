@@ -46,3 +46,21 @@
   this workspace. Requested the actual free Session pooler migrator URI on
   port 5432. No hosted DB inspection/migration has occurred; sandbox credit
   allocation remains zero and the template is absent.
+- The owner supplied the actual free Session pooler URI. Corrected URI encoding
+  privately and obtained production CA roots from pinned official Supabase CLI
+  source. Verified TLS, inspected PostgreSQL 17.11, backed up/encrypted the full
+  existing database, applied all six additive migrations and checked rerun
+  idempotence. Created and tested restricted API/worker logins; preserved public
+  schema/policies and denied browser roles USAGE on the new schema.
+- Restored the 24-table hosted Rethread schema into a separate local PostgreSQL
+  18 test DB. Fixed timestamp digest comparisons across UTC/Asia/Calcutta; all
+  tables and six migration records now match. Snapshot had no customer Cases.
+- API/worker images include provider CA roots, built and started locally against
+  the actual restricted database logins. Render dep-db7loll9fdbs73emtllg is live
+  at e8f1cf9 and reports database true; repair remains honestly blocked.
+- App-scoped dispatch returned exact Actions run 38552199840; the idle trusted
+  worker completed successfully against Supabase without sandbox/inference.
+  Same-origin hosted login initiation verified persisted state, matching S256
+  PKCE and Secure/HttpOnly/SameSite=Lax cookie. The owner's actual browser login
+  persisted a tenant-bound encrypted session; GitHub identity and installation
+  access were checked. Fixture addition still returns 403, credits remain zero.

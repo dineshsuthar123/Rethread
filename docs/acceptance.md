@@ -1,9 +1,10 @@
 # Acceptance evidence
 
 Initial evidence 2026-10-13 UTC; provider setup update 2026-10-14. **The hosted repair release is incomplete.** The
-frontend and existing free API are deployed; actual DB/worker/E2B/LLM and user-login
-acceptance remain blocked. App authentication and control installation access
-are now verified. No paid plan, worker, database, top-up
+frontend, existing free API, Supabase schema, actual user login and idle Actions
+worker are verified. E2B repair/LLM/guard/PR acceptance remains blocked by the
+absent template, zero credit allocation and fixture installation selection.
+No paid plan, worker, database, top-up
 or payment method was created. The owner selected existing Supabase Free.
 
 ## Source and deployed resources
@@ -12,9 +13,10 @@ or payment method was created. The owner selected existing Supabase Free.
   ID `1161587671`, renamed from Rift; old URL redirects.
 - Branch: `rethread/implementation`. Main remains
   `5ef799bdd45024a6b2d93d65b884272e93f1eae8`; no merge or force push.
-- Frontend/worker source: `9f53fc36d9ae2491c484770146e7a0b3aa6e970a`.
-  API readiness fix source: `ecfb3a47c9afe4bb487405fe657607bc65dde874`.
-  Later documentation/artifact commits do not change either runtime.
+- Frontend source: `9f53fc36d9ae2491c484770146e7a0b3aa6e970a`.
+  Current API/worker TLS setup source:
+  `e8f1cf9fc9e6f009c74d74b7c5f04e7ed493e29b`.
+  The earlier readiness fix was `ecfb3a47c9afe4bb487405fe657607bc65dde874`.
 - Vercel reused project `prj_y6qMBdujlnf4ELf7fZLiyJMirzd5`, display name
   `rethread`, workspace `team_z2VLeehZ3vv2r2hEfSFKEH3a`.
   Deployment `dpl_CWP8yJgpMxWRVfzSsc9tTEg1hBRb`: **READY**, branch preview
@@ -27,16 +29,18 @@ or payment method was created. The owner selected existing Supabase Free.
   Initial latest-version deploy `dep-db76fnrl550s73au8tkg` became **live**;
   its health identified the exact `9f53fc3...` commit. Rollback/forward IDs are
   recorded below. API readiness-fix deploy `dep-db76jurrjlhs73a41a8g`
-  became live. Current App/control-settings deploy `dep-db7ldle7bikc73ba5r2g`
-  is **live**, and its health identifies `ecfb3a4...`.
+  became live. Current Supabase/TLS deploy `dep-db7loll9fdbs73emtllg`
+  is **live**, and its health identifies `e8f1cf9...`.
 - `render.yaml` passed the authenticated Blueprint validator with one existing
   free API action. It contains no paid worker/database. The unrelated existing
   Render database was left untouched.
 
 The API returns genuine liveness. `/api/ready` correctly returns **503 blocked**
-with database/worker/repairConfigured false, loginConfigured/appConfigured true
-and an explicit database setup reason. Configuration presence does not establish
-a completed user login. No fixture is stored as a hosted verified Case.
+with database/loginConfigured/appConfigured true and repairConfigured false.
+The bounded worker exits when idle, so its 90-second heartbeat later expires.
+Readiness is still blocked by repair integrations, not the database. The
+same-origin Vercel rewrite returns the same real database status. No fixture is
+stored as a hosted verified Case.
 
 On 2026-10-14, the E2B key passed read-only sandbox inventory authentication
 without creating a sandbox; it was stored as `RETHREAD_E2B_API_KEY` in Actions.
@@ -50,17 +54,67 @@ contents, pull requests, checks and Actions write permissions plus the
 the control repository. The registered worker workflow is active. App keys and
 webhook settings were staged privately, including TLS verification; control
 dispatch settings and confirmed free-entitlement variables are configured.
-Temporary inspection installation tokens were revoked after use. Actual login,
-signed delivery persistence and worker dispatch still require the database.
+Temporary inspection/dispatch installation tokens were revoked after use.
+Actual signed webhook persistence and the repair journey remain unverified.
 
-The supplied Supabase direct URI resolves only to IPv6. Both ordinary resolution
-and an explicit IPv6 connection failed from this workspace; verified-TLS
-connection attempts timed out. `MIGRATION_DATABASE_URL` remains a placeholder.
-The free shared Session pooler URI (5432) is required before read-only inspection,
-backup and additive migration. No hosted data/schema was changed. Both free
-entitlement flags are now confirmed, but sandbox credit allocation remains 0
-and the template is absent. No template, inference or sandbox execution was
+Both free entitlement flags are confirmed, but sandbox credit allocation remains
+0 and the template is absent. No template, inference or sandbox execution was
 admitted under those settings.
+
+## Supabase, worker and actual login
+
+The owner supplied the actual shared Session pooler URI on 5432 after the direct
+IPv6 endpoint timed out. Reserved URI characters were normalized privately.
+Certificate and hostname verification succeeded using production CA roots from
+the pinned official Supabase CLI source in `deploy/certs/README.md`. Node rejects
+the connection without these roots (`SELF_SIGNED_CERT_IN_CHAIN`) and connects
+with them; verification was never disabled.
+
+Read-only inspection found PostgreSQL **17.11**, zero public/rethread tables,
+and existing provider-managed Auth/Realtime/Storage/Vault schemas. Before
+migration, a full custom-format pg_dump archive of **290,993 bytes / 403 entries**
+was checked and encrypted with AES-GCM; decryption round-trip matched. Six
+additive migrations applied, their checksums matched, and rerun applied nothing.
+Public table/policy digests remained unchanged. Separate capability/logins were
+created only for Rethread; both runtime connections verified TLS, schema search
+path and denied schema/database CREATE and Auth reads. Neither is superuser,
+CREATEROLE, CREATEDB or BYPASSRLS. `anon` and `authenticated` have no USAGE on
+the new schema. Runtime URLs were staged privately in Render/Actions.
+
+The hosted **24-table** Rethread schema was dumped/encrypted and restored into
+the separate local PostgreSQL 18 `rethread_supabase_restore_test` database.
+Every row digest/count and six migration records matched. Source UTC versus
+restore Asia/Calcutta exposed a timestamp serialization mismatch; the verifier
+now uses UTC and passes. This snapshot had **zero customer Cases/artifacts**;
+it proves new-schema restoration, not production recovery of later user data.
+The earlier populated local artifact/lease recovery evidence remains separate.
+Backups/key remain private under `.local/`; an owner backup storage/cadence is
+still required. Provider-managed schema restoration/PITR was not tested.
+
+Both updated Docker images built and started against these actual restricted
+connections. API image
+`sha256:0dd09ead22f02fe020d92a8238981f87f296cb2e08ef78b44e7d2d79c9495c5c`;
+worker image
+`sha256:dc1340520a179580c948b56e518edb9db8f27d8c55a7653630835d9417f3a06d`.
+The worker exited idle with code 0; the test API container was stopped.
+No target code executed on these control hosts.
+
+A control-repository-scoped App token (Actions write, contents read) dispatched
+`review.yml` on the implementation ref. GitHub API version 2026-03-10 returned
+the exact run ID, avoiding timestamp inference.
+[Run 38552199840](https://github.com/dineshsuthar123/Rethread/actions/runs/38552199840)
+completed **successfully** at `e8f1cf9...`, persisted its heartbeat/capabilities
+to Supabase and exited with an empty queue. This proves actual dispatch and
+trusted worker startup, not repair, sandbox or model execution.
+
+Hosted same-origin OAuth initiation returned 302 to GitHub with the expected
+client/callback, persisted state and matching S256 PKCE challenge. Its real
+cookie has Secure, HttpOnly, SameSite=Lax and `/api/auth` path. The owner then
+completed the actual browser sign-in. The resulting encrypted session has its
+tenant membership and eight-hour expiration; its provider token authenticated
+the matching GitHub identity and access to installation `171316286`.
+Browser control is unavailable here; authenticated Studio interaction, logout
+and repair approval through that browser remain to be exercised.
 
 ## Prepared live fixture
 
@@ -76,7 +130,8 @@ GitHub CI evidence of the captured failure, not hosted Rethread or E2B acceptanc
 
 The App inventory currently includes only Rethread. Adding the fixture with
 the authenticated account returned 403: the workspace cannot modify this App's
-installation selection. The owner must add the fixture in installation settings.
+installation selection. A retry using the actual App user token also returned
+403. The owner must add the fixture in installation settings.
 No repair branch, repair PR or recurrence branch has been created yet. Retain
 fixture artifacts until the owner authorizes cleanup.
 
@@ -94,8 +149,10 @@ fixture artifacts until the owner authorizes cleanup.
 | Trivy image gates | Passed | HIGH/CRITICAL with fixes available; lower/unfixed findings are not a clean-security guarantee |
 | Six forward migrations | Passed | Empty isolated PostgreSQL 18 test DB, then idempotent rerun/restore |
 
-Latest API runtime CI: [run 38438794226](https://github.com/dineshsuthar123/Rethread/actions/runs/38438794226),
-all three jobs successful (checks, API image, worker image).
+Current API/worker TLS source CI:
+[push run 38551179597](https://github.com/dineshsuthar123/Rethread/actions/runs/38551179597)
+and [PR run 38551188181](https://github.com/dineshsuthar123/Rethread/actions/runs/38551188181),
+all jobs successful (checks, API image, worker image).
 Frontend/worker runtime [run 38437413073](https://github.com/dineshsuthar123/Rethread/actions/runs/38437413073)
 also passed. The prior
 [run 38436727018](https://github.com/dineshsuthar123/Rethread/actions/runs/38436727018)
@@ -193,19 +250,20 @@ health identified `9f53fc3...`; the subsequent readiness fix is also live.
 This tests provider image/commit deployment and liveness only: the hosted database was
 unconfigured, so hosted job reconciliation/data recovery could not be tested.
 Lease/checkpoint/terminal-outcome reconciliation is covered by local PostgreSQL
-tests. Vercel production-alias rollback and Supabase hosted backup/PITR were
-not exercised. Never roll back to the removed privileged legacy runtime.
+tests. Supabase backup/new-schema restore was subsequently exercised as recorded
+above; hosted job/data reconciliation after provider rollback and paid PITR
+remain untested. Vercel production-alias rollback was not exercised. Never roll
+back to the removed privileged legacy runtime.
 
 ## Concrete release blockers and owner steps
 
 | Blocked action | Resource | Minimal private owner setup |
 | --- | --- | --- |
-| Inspect/backup/migrate persistent data; connect API/worker | Existing Supabase Free project | Copy the actual free Session pooler URI on 5432 from Dashboard Connect into private MIGRATION_DATABASE_URL; direct IPv6 times out. After backup, create restricted runtime logins as deployment.md specifies |
-| Actual user sign-in and signed webhook persistence | Rethread GitHub App/API | App credentials/permissions/control installation are verified and staged; connect migrated database, then exercise the actual callback and delivery path |
-| Run the durable trusted worker | Rethread Actions review.yml | Provider keys and free variables are staged; worker DB URL and validated E2B template remain required before dispatch |
 | Build template and exercise isolation/cancellation | E2B Hobby | Entitlement confirmed, key authenticated; allocate a positive bounded amount within verified remaining free credits, with billing/top-ups disabled |
 | Generate a real bounded candidate | Groq free tier | Key/model authenticated and staged, entitlement confirmed; replay and credit dependencies must pass before inference |
-| Hosted failure -> approval -> one draft PR -> later recurrence | rethread-python-acceptance | Add repository 1418721552 to installation 171316286 in GitHub settings; workspace installation modification returned 403. Complete the preceding dependencies |
+| Actual fixture connection and signed webhook persistence | Rethread GitHub App/API | Add repository 1418721552 to installation 171316286 in GitHub settings; CLI and App-user attempts returned 403. User login and DB are verified |
+| Hosted failure -> approval -> one draft PR -> later recurrence | rethread-python-acceptance | Complete the template/credit/installation dependencies, then exercise the real Case journey in the signed-in Studio |
+| Backup storage/cadence and recovery with actual user data | Existing Supabase Free project | Preserve the private encrypted dumps and AES key in owner backup storage; define/test cadence before private Cases |
 
 Use ignored private environment files or provider settings; never put secrets
 in chat, VITE variables, commits or build arguments. [Deployment](deployment.md)

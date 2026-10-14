@@ -9,7 +9,7 @@ is not the active Blueprint.
 | --- | --- | --- |
 | Frontend | Existing Vercel project, renamed Rethread | Preview protection and Hobby quotas apply |
 | API | Existing Render service, retained `free` plan | Sleeps/cold starts; no continuous-service guarantee |
-| Durable jobs/data | Owner's existing Supabase Free PostgreSQL | Private connection required; quotas and pause behavior apply |
+| Durable jobs/data | Owner's existing Supabase Free PostgreSQL | Migrated and connected with restricted roles/verified TLS; quotas and pause behavior apply |
 | Trusted worker | GitHub Actions standard Linux runner in this public repository | Event dispatch, queue delay, bounded batch, no always-on process |
 | Target execution | E2B Hobby one-time credits | Stops at allocated credits; no paid top-up or host fallback |
 | Planner | Owner-confirmed Groq free-tier key | Rate/token quota failures stay explicit; paid destinations blocked |
@@ -53,7 +53,9 @@ so owner/provider limits still apply. [E2B pricing](https://e2b.dev/pricing).
 
 The owner selected existing Supabase Free. Its database/storage quotas and
 inactivity behavior apply. Inspect and back up that existing project before
-forward migrations; no Supabase project has been created or modified yet.
+forward migrations. The existing project now contains the additive `rethread`
+schema; provider-managed schemas and public policies were preserved. No new
+Supabase project or paid entitlement was created.
 The unrelated existing Render database has not been reused.
 [Supabase Free](https://supabase.com/pricing).
 

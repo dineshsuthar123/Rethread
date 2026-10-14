@@ -72,6 +72,8 @@ paid PITR under the current authorization. `verify_restore.py` refuses a restore
 target whose database name does not end in `_test`, compares every Rethread
 table's row digest/count, verifies cursor continuity and decompresses/hash-checks
 artifacts. Pause source writes during the dump/comparison to avoid drift.
+Verification sets its transaction time zone to UTC so timestamp digests agree
+when source and restore servers use different time zones.
 
 Migrations are additive, checksum-protected and serialized by advisory lock.
 The current schema leaves legacy Supabase tables intact. Roll back application
@@ -84,6 +86,17 @@ database, compared 24 tables, 49 Cases, 83 events and one compressed artifact.
 An intentionally failing transaction left neither its probe table nor migration
 record, and the normal migrator reran successfully. No production schema was
 rolled back. See acceptance.md for the exact environment and limitations.
+
+On 2026-10-14 the existing hosted database was inspected before migration and a
+full custom-format dump encrypted under `.local/`; its archive was readable and
+encryption round-trip checked. The newly migrated 24-table Rethread schema was
+separately dumped, encrypted and restored into `rethread_supabase_restore_test`.
+All row digests/counts and six migration records matched after UTC normalization.
+No hosted customer Cases or artifacts existed at snapshot time. Preserve the
+private AES-GCM key separately from the encrypted dumps in owner-controlled
+backup storage before admitting private source; a backup cadence/off-site
+destination remains an owner operation. These files and runtime settings are
+ignored by Git and must never be committed.
 
 ## Deploy rollback
 

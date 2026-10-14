@@ -61,18 +61,21 @@ explicitly authored test evidence, not production sandbox acceptance.
 
 ## Remaining release risks and blocked dependencies
 
-Actual GitHub user sign-in, existing Supabase backup/migration, Actions worker
-startup, E2B template/network probes, bounded free-tier inference and the hosted
-repair/PR/recurrence journey are not verified. App credentials now authenticate;
-required permissions, events and the control installation were verified and
-staged. E2B/Groq keys passed read-only authentication, and Actions secrets/model
-and confirmed free-entitlement variables were staged privately. Sandbox credit
-admission is still zero. The supplied Supabase direct endpoint is IPv6-only and
-times out; the actual free Session pooler migrator URI is still required. A valid
-session key is configured privately on the live free API. The new disposable
-Python fixture has real failing GitHub CI evidence, but its App selection
-requires an owner change after a 403. No template, sandbox, inference or hosted
-verified Case is claimed. See acceptance.md for exact results and IDs.
+Actual GitHub user sign-in, provider identity/selected installation, Supabase
+backup/migration, restricted-role startup and idle Actions worker dispatch are
+now verified. The free Session pooler replaced the unreachable direct IPv6
+endpoint; runtime images carry pinned official CA roots for certificate/hostname
+verification. The 24-table new schema restored into a separate local test DB.
+That exercise found a timestamp comparison mismatch between UTC and
+Asia/Calcutta; restore verification now normalizes its session to UTC.
+
+E2B/Groq keys and confirmed free-entitlement variables are staged privately, but
+sandbox credit admission is still zero and the template is absent. Actual E2B
+isolation, bounded inference and the hosted repair/PR/recurrence journey remain
+unverified. The disposable Python fixture has real failing GitHub CI evidence;
+its App selection requires an owner change after 403 responses with both CLI
+and actual App user credentials. No sandbox, inference or hosted verified Case
+is claimed. See acceptance.md for exact results and IDs.
 
 New-schema tenant isolation uses scoped queries and composite keys, not RLS;
 the schema must stay outside Supabase's browser Data API. Free hosting has API
