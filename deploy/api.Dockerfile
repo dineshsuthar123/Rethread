@@ -21,6 +21,7 @@ COPY --from=build --chown=node:node /app/node_modules node_modules
 COPY --from=build --chown=node:node /app/contracts contracts
 COPY --from=build --chown=node:node /app/backend backend
 COPY --chown=node:node migrations migrations
+COPY --chown=node:node deploy/certs deploy/certs
 USER node
 EXPOSE 3001
 CMD ["node", "backend/dist/server.js"]

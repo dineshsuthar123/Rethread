@@ -27,6 +27,8 @@ jobs:
         run: uv run --no-dev python -m agent.rethread.worker
         env:
           DATABASE_URL: ${{ secrets.RETHREAD_WORKER_DATABASE_URL }}
+          PGSSLMODE: verify-full
+          PGSSLROOTCERT: ${{ github.workspace }}/deploy/certs/supabase-root-ca.pem
           GITHUB_APP_ID: ${{ secrets.RETHREAD_GITHUB_APP_ID }}
           GITHUB_APP_PRIVATE_KEY: ${{ secrets.RETHREAD_GITHUB_APP_PRIVATE_KEY }}
           E2B_API_KEY: ${{ secrets.RETHREAD_E2B_API_KEY }}

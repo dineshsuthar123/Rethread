@@ -6,6 +6,8 @@ RUN uv sync --frozen --no-dev && useradd --create-home --uid 10001 rethread
 COPY agent/rethread agent/rethread
 COPY agent/__init__.py agent/__init__.py
 COPY contracts/v1.json contracts/v1.json
+COPY deploy/certs deploy/certs
 USER rethread
 ENV PYTHONUNBUFFERED=1 PATH=/app/.venv/bin:$PATH
+ENV PGSSLMODE=verify-full PGSSLROOTCERT=/app/deploy/certs/supabase-root-ca.pem
 CMD ["python", "-m", "agent.rethread.worker"]
