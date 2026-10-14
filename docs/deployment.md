@@ -73,7 +73,9 @@ limits, following the official [backup guidance](https://supabase.com/docs/guide
 The local restore exercise is not a hosted backup or recovery promise.
 
 GitHub App repository permissions: contents read/write, pull requests
-read/write, checks read/write, Actions read, metadata read. Subscribe to
+read/write, checks read/write, Actions write, metadata read. Actions write is
+required for the trusted control repository's workflow dispatch; target
+installation tokens explicitly request only Actions read. Subscribe to
 installation, installation_repositories and pull_request events. Install only
 on selected authorized repositories. Set user callback to
 `<verified-frontend-origin>/api/auth/callback` and webhook to the verified

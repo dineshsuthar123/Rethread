@@ -62,12 +62,14 @@ explicitly authored test evidence, not production sandbox acceptance.
 ## Remaining release risks and blocked dependencies
 
 Actual GitHub App sign-in/installation, existing Supabase backup/migration,
-Actions runtime secrets, E2B template/network probes, a valid free LLM key and
-the hosted repair/PR/recurrence journey are not verified. Database/App/E2B
-settings remain empty. The newly supplied Groq key passed a read-only model
-inventory request (200, selected model available); inference remains blocked
-until the free entitlement is confirmed. Its worker secret/model variable were
-staged privately. No simulated integration is advertised as live.
+Actions worker startup, E2B template/network probes, bounded free-tier inference
+and the hosted repair/PR/recurrence journey are not verified. Database URLs
+remain empty; the supplied App key/slug fail format validation. E2B and Groq
+keys passed read-only authentication, and their Actions secrets/model variable
+were staged privately. No template, sandbox or inference was admitted while
+free entitlements remain unconfirmed and credit admission is zero. A valid
+session key was generated and configured privately on the free API. No
+simulated integration is advertised as live.
 
 New-schema tenant isolation uses scoped queries and composite keys, not RLS;
 the schema must stay outside Supabase's browser Data API. Free hosting has API

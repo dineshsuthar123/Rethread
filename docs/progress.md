@@ -29,3 +29,8 @@
   model inventory returned 200 and confirmed model availability; staged the
   worker secret/model variable without printing values. Database/App/E2B fields
   and free entitlement/credit admission remain unconfigured.
+- 2026-10-14: All push/PR checks passed on the documented branch. Newly supplied
+  E2B key passed read-only authentication and was staged in Actions. Generated
+  and privately configured a valid API session key and verified frontend origin;
+  the existing free API redeploy is live. App private-key/slug validation failed;
+  database URLs and free-credit confirmation still block live acceptance.

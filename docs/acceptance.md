@@ -1,6 +1,6 @@
 # Acceptance evidence
 
-Recorded 2026-10-13 UTC. **The hosted repair release is incomplete.** The
+Initial evidence 2026-10-13 UTC; provider setup update 2026-10-14. **The hosted repair release is incomplete.** The
 frontend and existing free API are deployed; actual DB/App/worker/E2B/LLM
 acceptance is blocked by private access. No paid plan, worker, database, top-up
 or payment method was created. The owner selected existing Supabase Free.
@@ -25,7 +25,8 @@ or payment method was created. The owner selected existing Supabase Free.
   **free** plan, URL [API health](https://rift-cicd-agent.onrender.com/api/health).
   Initial latest-version deploy `dep-db76fnrl550s73au8tkg` became **live**;
   its health identified the exact `9f53fc3...` commit. Rollback/forward IDs are
-  recorded below. Final API readiness-fix deploy `dep-db76jurrjlhs73a41a8g`
+  recorded below. API readiness-fix deploy `dep-db76jurrjlhs73a41a8g`
+  became live. Current private-settings deploy `dep-db7ktuu7bikc73b8k0i0`
   is **live**, and its health identifies `ecfb3a4...`.
 - `render.yaml` passed the authenticated Blueprint validator with one existing
   free API action. It contains no paid worker/database. The unrelated existing
@@ -34,6 +35,17 @@ or payment method was created. The owner selected existing Supabase Free.
 The API returns genuine liveness. `/api/ready` correctly returns **503 blocked**
 with database/worker/loginConfigured/appConfigured/repairConfigured false and
 an explicit database setup reason. No fixture is stored as a hosted verified Case.
+
+On 2026-10-14, the E2B key passed read-only sandbox inventory authentication
+without creating a sandbox; it was stored as `RETHREAD_E2B_API_KEY` in Actions.
+The Groq key/model were already authenticated and staged. A valid 32-byte
+session encryption key was generated privately and configured on the existing
+Render API with the verified frontend origin, FREE_ONLY and Actions worker mode.
+No secret values were printed or committed. The GitHub App fields are present
+but unusable: private-key parsing fails and the supplied slug is not a valid
+bare slug or App URL. Database URLs remain empty, Supabase CLI is not signed in,
+free-entitlement confirmations remain false and sandbox credit allocation is 0.
+No template, inference or sandbox execution was admitted under those settings.
 
 ## Automated evidence
 
@@ -58,6 +70,10 @@ also passed at `a6e5df20cd5917d168aee37f92af2ce962f320b4`.
 Its [API](artifacts/sboms/rethread-api-sbom.json),
 [worker](artifacts/sboms/rethread-worker-sbom.json) and local locked
 [Python](artifacts/sboms/python-sbom.json) CycloneDX SBOMs are retained.
+The evidence snapshot at `4fcd16b5421ed549152c1c9d3505e5280b13438c`
+passed [push CI](https://github.com/dineshsuthar123/Rethread/actions/runs/38439947222)
+and [draft-PR CI](https://github.com/dineshsuthar123/Rethread/actions/runs/38440061836).
+Review [draft PR #3](https://github.com/dineshsuthar123/Rethread/pull/3); main is unchanged.
 
 Earlier CI failures were real: Docker-driver SBOM attestation was unsupported,
 then the API image contained vulnerable Debian perl and bundled npm packages.
@@ -152,9 +168,9 @@ not exercised. Never roll back to the removed privileged legacy runtime.
 | Blocked action | Resource | Minimal private owner setup |
 | --- | --- | --- |
 | Inspect/backup/migrate persistent data; connect API/worker | Existing Supabase Free project | Sign in with Supabase CLI/provider; privately supply migrator URL, then create separate runtime logins as deployment.md specifies |
-| Real user sign-in, selected repo access, webhooks and workflow dispatch | Rethread GitHub App | Configure App credentials, callback/webhook secrets; install on selected repo and trusted control repo; provide installation IDs |
+| Real user sign-in, selected repo access, webhooks and workflow dispatch | Rethread GitHub App | Correct the bare slug and provide a parseable downloaded PEM key privately; verify callback/permissions and install on selected repo/control repo; provide installation IDs |
 | Run the durable trusted worker | Rethread Actions review.yml | Configure the listed RETHREAD_ runtime secrets/variables, then dispatch the implementation ref |
-| Build template and exercise isolation/cancellation | E2B Hobby | Private key, template build, confirmed remaining free entitlement and bounded credit allocation; default zero blocks execution |
+| Build template and exercise isolation/cancellation | E2B Hobby | Key authenticated read-only and stored in Actions; remaining free entitlement/credits must be confirmed and allocated before template/execution work |
 | Generate a real bounded candidate | Groq free tier | Newly supplied private key/model authenticated (model inventory 200), staged as Actions secret/variable; free entitlement confirmation remains false, so no inference is admitted |
 | Hosted failure -> approval -> one draft PR -> later recurrence | Disposable authorized Python repo | All above credentials plus a specifically authorized fixture repository/installation and verified frontend origin |
 
