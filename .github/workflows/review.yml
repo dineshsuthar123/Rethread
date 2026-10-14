@@ -1,233 +1,52 @@
-# =============================================================================
-# RIFT v2 — Assisted Review Workflow
-# =============================================================================
-# Triggered by the Koyeb webhook receiver via `workflow_dispatch`.
-# Runs the tiered validation funnel and posts GitHub suggestion comments.
-#
-# Required secrets (Settings → Secrets → Actions):
-#   SUPABASE_URL         – e.g. https://xxxx.supabase.co
-#   SUPABASE_KEY         – service_role key for the github_actions DB role
-#   ANTHROPIC_API_KEY    – Claude pay-as-you-go key (or set GROQ_API_KEY)
-#   GROQ_API_KEY         – Groq inference key
-#   LLM_PROVIDER         – "anthropic" or "groq"
-#   GH_TOKEN             – Fine-grained PAT: repo read + pull_request write
-#                          + checks write  (NOT the default GITHUB_TOKEN for
-#                          cross-repo comment posting from webhook target)
-# =============================================================================
-
-name: RIFT Assisted Review
-
+# Runs trusted orchestration from main. Target repository code is executed
+# only inside the isolated sandbox provider.
+name: Rethread trusted worker
 on:
   workflow_dispatch:
-    inputs:
-      correlation_id:
-        description: 'Webhook tracking UUID (propagated from Koyeb)'
-        required: true
-        type: string
-      pr_number:
-        description: 'Pull Request number to review'
-        required: true
-        type: string
-      repo_full_name:
-        description: 'Target repository (owner/repo)'
-        required: true
-        type: string
-      base_sha:
-        description: 'Base SHA of the PR (merge-base)'
-        required: false
-        type: string
-      head_sha:
-        description: 'Head SHA of the PR'
-        required: false
-        type: string
-      daily_cap_usd:
-        description: 'Daily cost cap in USD (default: 5.00)'
-        required: false
-        default: '5.00'
-        type: string
-
-# ── Global LLM concurrency lock ───────────────────────────────────────────────
-# Only one RIFT review runs at a time globally. New jobs queue; none are
-# cancelled (cancel-in-progress: false). Raise to a per-repo group once
-# multi-tenancy is required.
-concurrency:
-  group: llm-global
-  cancel-in-progress: false
-
-# ── Minimal token permissions ─────────────────────────────────────────────────
 permissions:
-  contents: read        # checkout
-  pull-requests: write  # post review comments
-  checks: write         # update check run status
-
+  contents: read
+concurrency:
+  group: rethread-trusted-worker
+  cancel-in-progress: false
 jobs:
-  # ───────────────────────────────────────────────────────────────────────────
-  # Job 1: Validate inputs & create a pending check run
-  # ───────────────────────────────────────────────────────────────────────────
-  preflight:
-    name: Pre-flight & Pending Check
+  worker:
     runs-on: ubuntu-latest
-    outputs:
-      check_run_id: ${{ steps.create_check.outputs.check_run_id }}
+    timeout-minutes: 30
     steps:
-      - name: Validate inputs
-        run: |
-          echo "correlation_id : ${{ github.event.inputs.correlation_id }}"
-          echo "pr_number      : ${{ github.event.inputs.pr_number }}"
-          echo "repo           : ${{ github.event.inputs.repo_full_name }}"
-          if [ -z "${{ github.event.inputs.correlation_id }}" ] || \
-             [ -z "${{ github.event.inputs.pr_number }}" ] || \
-             [ -z "${{ github.event.inputs.repo_full_name }}" ]; then
-            echo "::error::Required inputs missing"
-            exit 1
-          fi
-
-      - name: Create pending check run
-        id: create_check
-        uses: actions/github-script@v7
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
-          github-token: ${{ secrets.GH_TOKEN }}
-          script: |
-            const [owner, repo] = '${{ github.event.inputs.repo_full_name }}'.split('/');
-            const { data } = await github.rest.checks.create({
-              owner, repo,
-              name: 'RIFT Assisted Review',
-              head_sha: '${{ github.event.inputs.head_sha }}' || 'HEAD',
-              status: 'in_progress',
-              started_at: new Date().toISOString(),
-              output: {
-                title: 'RIFT is analysing your PR…',
-                summary: `Correlation ID: \`${{ github.event.inputs.correlation_id }}\`\nValidation funnel running.`
-              }
-            });
-            core.setOutput('check_run_id', data.id);
-            console.log(`Check run created: ${data.id}`);
-
-  # ───────────────────────────────────────────────────────────────────────────
-  # Job 2: Tiered validation funnel + LLM suggestion
-  # ───────────────────────────────────────────────────────────────────────────
-  analyze-and-suggest:
-    name: Validation Funnel & Suggestion
-    runs-on: ubuntu-latest
-    needs: preflight
-    environment: rift-review   # optional: add approval gate for sensitive repos
-    timeout-minutes: 20        # hard time cap per run
-
-    steps:
-      # ── Checkout the RIFT agent (this repo) ──────────────────────────────
-      - name: Checkout RIFT agent
-        uses: actions/checkout@v4
-        with:
-          path: rift-agent
-
-      # ── Checkout the target PR repo ───────────────────────────────────────
-      - name: Checkout target repository PR
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ github.event.inputs.repo_full_name }}
-          ref: ${{ github.event.inputs.head_sha }}
-          token: ${{ secrets.GH_TOKEN }}
-          path: target-repo
-
-      # ── Python setup ──────────────────────────────────────────────────────
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.12'
-          cache: 'pip'
-          cache-dependency-path: rift-agent/agent/requirements.txt
-
-      - name: Install RIFT agent dependencies
-        run: |
-          pip install --upgrade pip
-          pip install -r rift-agent/agent/requirements_v2.txt
-
-      # ── Install target repo dependencies (best-effort) ───────────────────
-      - name: Install target repo Python deps
-        continue-on-error: true
-        run: |
-          if [ -f target-repo/requirements.txt ]; then
-            pip install -r target-repo/requirements.txt
-          elif [ -f target-repo/pyproject.toml ]; then
-            pip install -e target-repo/[dev] 2>/dev/null || pip install -e target-repo/
-          fi
-
-      # ── Run tiered funnel + LLM ───────────────────────────────────────────
-      - name: Run RIFT validation funnel
-        id: rift_run
-        run: python rift-agent/agent/call_llm.py
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+        with:
+          version: '0.13.0'
+      - run: uv sync --frozen --no-dev
+      - name: Drain persisted jobs through isolated sandboxes
+        run: uv run --no-dev python -m agent.rethread.worker
         env:
-          # Supabase credentials (github_actions role)
-          SUPABASE_URL:          ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY:          ${{ secrets.SUPABASE_KEY }}
-          # LLM provider credentials
-          ANTHROPIC_API_KEY:     ${{ secrets.ANTHROPIC_API_KEY }}
-          GROQ_API_KEY:          ${{ secrets.GROQ_API_KEY }}
-          OPENAI_API_KEY:        ${{ secrets.OPENAI_API_KEY }}
-          GOOGLE_API_KEY:        ${{ secrets.GOOGLE_API_KEY }}
-          LLM_PROVIDER:          ${{ secrets.LLM_PROVIDER }}
-          # Workflow context propagated to the Python script
-          CORRELATION_ID:        ${{ github.event.inputs.correlation_id }}
-          PR_NUMBER:             ${{ github.event.inputs.pr_number }}
-          REPO_FULL_NAME:        ${{ github.event.inputs.repo_full_name }}
-          BASE_SHA:              ${{ github.event.inputs.base_sha }}
-          HEAD_SHA:              ${{ github.event.inputs.head_sha }}
-          DAILY_CAP_USD:         ${{ github.event.inputs.daily_cap_usd }}
-          GH_TOKEN:              ${{ secrets.GH_TOKEN }}
-          TARGET_REPO_PATH:      ${{ github.workspace }}/target-repo
-          WORKSPACE_DIR:         ${{ github.workspace }}/target-repo
-          WORKFLOW_RUN_ID:       ${{ github.run_id }}
-          MAX_ALLOWED_PER_MIN:   '5'
-          # PYTHONPATH: v1 agent modules (error_parser, fix_generator, etc.)
-          PYTHONPATH:            ${{ github.workspace }}/rift-agent/agent
+          DATABASE_URL: ${{ secrets.RETHREAD_WORKER_DATABASE_URL }}
+          PGSSLMODE: verify-full
+          PGSSLROOTCERT: ${{ github.workspace }}/deploy/certs/supabase-root-ca.pem
+          GITHUB_APP_ID: ${{ secrets.RETHREAD_GITHUB_APP_ID }}
+          GITHUB_APP_PRIVATE_KEY: ${{ secrets.RETHREAD_GITHUB_APP_PRIVATE_KEY }}
+          E2B_API_KEY: ${{ secrets.RETHREAD_E2B_API_KEY }}
+          E2B_TEMPLATE_ID: ${{ secrets.RETHREAD_E2B_TEMPLATE_ID }}
+          LLM_API_KEY: ${{ secrets.RETHREAD_LLM_API_KEY }}
+          LLM_MODEL: ${{ vars.RETHREAD_LLM_MODEL }}
+          LLM_BASE_URL: https://api.groq.com/openai/v1
+          PUBLIC_ORIGIN: ${{ vars.RETHREAD_PUBLIC_ORIGIN }}
+          BUILD_ID: ${{ github.sha }}
+          WORKER_EXIT_WHEN_IDLE: 'true'
+          MAX_JOBS_PER_INVOCATION: '2'
+          MAX_JOB_WALL_SECONDS: '720'
+          WORKER_MODE: github-actions
+          TENANT_DAILY_BUDGET_MICROS: '0'
+          GLOBAL_DAILY_BUDGET_MICROS: '0'
+          ALLOW_FREE_LLM: 'true'
+          FREE_ONLY: 'true'
+          FREE_LLM_ENTITLEMENT_CONFIRMED: ${{ vars.RETHREAD_FREE_LLM_ENTITLEMENT_CONFIRMED }}
+          E2B_FREE_ENTITLEMENT_CONFIRMED: ${{ vars.RETHREAD_E2B_FREE_ENTITLEMENT_CONFIRMED }}
 
-      # ── Update check run to completed ─────────────────────────────────────
-      - name: Update check run — success
-        if: success()
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GH_TOKEN }}
-          script: |
-            const [owner, repo] = '${{ github.event.inputs.repo_full_name }}'.split('/');
-            await github.rest.checks.update({
-              owner, repo,
-              check_run_id: ${{ needs.preflight.outputs.check_run_id }},
-              status: 'completed',
-              conclusion: 'success',
-              completed_at: new Date().toISOString(),
-              output: {
-                title: 'RIFT review complete — see inline suggestions',
-                summary: 'The validation funnel passed. Suggestion comments have been posted to the PR.'
-              }
-            });
-
-      - name: Update check run — failure
-        if: failure()
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GH_TOKEN }}
-          script: |
-            const [owner, repo] = '${{ github.event.inputs.repo_full_name }}'.split('/');
-            await github.rest.checks.update({
-              owner, repo,
-              check_run_id: ${{ needs.preflight.outputs.check_run_id }},
-              status: 'completed',
-              conclusion: 'action_required',
-              completed_at: new Date().toISOString(),
-              output: {
-                title: 'RIFT review failed — manual inspection required',
-                summary: 'The validation funnel or LLM call encountered an error. Check the workflow run logs.'
-              }
-            });
-
-      # ── Upload diagnostic artefacts ───────────────────────────────────────
-      - name: Upload RIFT run artefacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: rift-run-${{ github.event.inputs.correlation_id }}
-          path: |
-            rift-agent/agent/rift_run_*.json
-            target-repo/errors.json
-            /tmp/rift_*.log
-          retention-days: 7
+          SANDBOX_FREE_CREDIT_BUDGET_MICROS: ${{ vars.RETHREAD_SANDBOX_FREE_CREDIT_BUDGET_MICROS }}

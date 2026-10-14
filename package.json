@@ -1,0 +1,23 @@
+{
+  "name": "rethread",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend",
+    "contracts"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w frontend",
+    "build": "npm run build -w contracts && npm run build -w backend && npm run build -w frontend",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test -w backend",
+    "test:e2e": "playwright test",
+    "migrate": "npm run migrate -w backend"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.0",
+    "typescript": "5.9.3",
+    "@types/node": "22.18.10"
+  }
+}

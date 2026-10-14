@@ -31,3 +31,8 @@ Thumbs.db
 *.swp
 *.swo
 .vercel
+.local/
+test-results/
+playwright-report/
+artifacts/
+!docs/artifacts/

@@ -1,0 +1,93 @@
+name: Rethread checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: rethread-ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: rethread_test
+          POSTGRES_PASSWORD: controlled-ci-password
+          POSTGRES_DB: rethread_test
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U rethread_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://rethread_test:controlled-ci-password@127.0.0.1:5432/rethread_test
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+        with:
+          version: '0.13.0'
+      - run: npm ci
+      - run: uv sync --frozen
+      - run: npm run build
+      - run: npm run migrate
+      - run: npm test
+      - run: uv run ruff check agent/rethread tests/python
+      - run: uv run pytest -q
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - run: npm audit --audit-level=high
+      - name: Python dependency scan and SBOM
+        run: |
+          uv export --frozen --no-dev --format requirements-txt --output-file runtime-requirements.txt > /dev/null
+          uvx pip-audit -r runtime-requirements.txt --format cyclonedx-json --output python-sbom.json
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        if: always()
+        with:
+          name: rethread-acceptance
+          path: |
+            docs/artifacts
+            test-results
+            python-sbom.json
+          retention-days: 7
+  images:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [api, worker]
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - run: docker build -f deploy/${{ matrix.image }}.Dockerfile -t rethread-${{ matrix.image }}:ci .
+      - uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        with:
+          image-ref: rethread-${{ matrix.image }}:ci
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+          ignore-unfixed: true
+      - name: Image SBOM
+        if: always()
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        with:
+          image-ref: rethread-${{ matrix.image }}:ci
+          format: cyclonedx
+          output: rethread-${{ matrix.image }}-sbom.json
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        if: always()
+        with:
+          name: rethread-${{ matrix.image }}-sbom
+          path: rethread-${{ matrix.image }}-sbom.json
+          retention-days: 7

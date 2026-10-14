@@ -1,0 +1,195 @@
+{
+  "date": "2026-10-14",
+  "runtimeSourceCommit": "e8f1cf9fc9e6f009c74d74b7c5f04e7ed493e29b",
+  "renderDeploy": "dep-db7loll9fdbs73emtllg",
+  "postgresVersion": "17.11",
+  "preMigrationBackup": {
+    "encrypted": true,
+    "archiveBytes": 290993,
+    "archiveEntries": 403,
+    "archiveSha256": "829acf7567eff6fb28508f2b58b4a893ad20d43b7c184e2c863be62d0bd880c0",
+    "scope": "full readable pg_dump archive; no application tables existed; provider-managed restoration not tested"
+  },
+  "restrictedRoles": {
+    "status": "passed",
+    "migrationCount": 6,
+    "rethreadTables": 24,
+    "roles": [
+      {
+        "role": "api",
+        "verifiedTls": true,
+        "elevatedPrivileges": false,
+        "unrelatedAuthReadDenied": true,
+        "schemaCreateDenied": true,
+        "databaseCreateDenied": true,
+        "cases": 0,
+        "sessionSearchPathVerified": true
+      },
+      {
+        "role": "worker",
+        "verifiedTls": true,
+        "elevatedPrivileges": false,
+        "unrelatedAuthReadDenied": true,
+        "schemaCreateDenied": true,
+        "databaseCreateDenied": true,
+        "cases": 0,
+        "sessionSearchPathVerified": true
+      }
+    ],
+    "anonymousAndAuthenticatedSchemaUsage": false
+  },
+  "restoredSchema": {
+    "status": "passed",
+    "tables": {
+      "artifact_payloads": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "artifacts": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "audit_records": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "budget_reservations": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "budgets": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "cases": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "events": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "guard_checks": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "guards": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "installations": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "jobs": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "memberships": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "oauth_states": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "publish_intents": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "repositories": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "sandbox_credit_allowance": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "sandbox_credit_charges": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "schema_migrations": {
+        "rows": 6,
+        "sha256": "66cafa3bd5a2b3be7255c7e3f7bca181a84f6ccb56ec6cba81c6b95eb92bbcb4"
+      },
+      "sessions": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "tenants": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "users": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "webhook_deliveries": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "worker_heartbeats": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "worker_wakeups": {
+        "rows": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    "eventCursors": "passed",
+    "artifactHashes": "passed",
+    "encrypted": true,
+    "archiveSha256": "646f5229547955d7609d68891127aa83d5e6deca328c1613f636bbd8b1104f4d",
+    "source": "Supabase Free PostgreSQL 17.11",
+    "target": "separate local PostgreSQL 18 test database",
+    "scope": "24-table new application schema; zero customer Cases/artifacts; UTC canonical timestamps"
+  },
+  "idleWorker": {
+    "dispatchStatus": 200,
+    "runId": 38552199840,
+    "url": "https://github.com/dineshsuthar123/Rethread/actions/runs/38552199840",
+    "conclusion": "success",
+    "scope": "actual App-scoped dispatch, Supabase heartbeat and idle exit; no sandbox/model execution"
+  },
+  "oauthInitiation": {
+    "statePersisted": true,
+    "pkceChallengeMatches": true,
+    "pkceMethod": "S256",
+    "cookieSecure": true,
+    "cookieHttpOnly": true,
+    "cookieSameSiteLax": true,
+    "cookieAuthPath": true,
+    "callbackMatches": true
+  },
+  "actualUserLogin": {
+    "interactiveLoginVerified": true,
+    "githubIdentityMatches": true,
+    "tenantMembershipVerified": true,
+    "encryptedProviderTokenVerified": true,
+    "ownAppInstallationAccessible": true
+  },
+  "nativeWebhookTrigger": {
+    "connectedRepository": "dineshsuthar123/Rethread",
+    "signedDeliveryPersistenceVerified": true,
+    "observedNativeDeliveries": 2,
+    "automaticWorkerRun": 38553518160,
+    "workerActor": "rethread-agent[bot]",
+    "workerSourceCommit": "f59d3105d8c35b7ebc9b9253621d5bd036518b39",
+    "preflightJobStatus": "failed",
+    "reason": "E2B credentials and a validated template are required",
+    "nativeRedeliveryTested": false,
+    "deliveryHistoryEndpointStatus": 404,
+    "unsignedWebhookStatus": 401,
+    "unsignedDeliveryPersisted": false,
+    "scope": "Actual PR update, persisted job and App-triggered worker; no guard pass or target execution"
+  },
+  "remaining": {
+    "fixtureInstallation": "owner settings required; 403 with CLI and App user token",
+    "sandboxCreditAllocation": 0,
+    "e2bTemplate": false,
+    "liveRepairVerified": false,
+    "automaticBackupCadence": false
+  }
+}

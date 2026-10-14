@@ -1,28 +1,53 @@
-# ─────────────────────────────────────────────────────────
-# RIFT 2026 — Render.com Blueprint (render.yaml)
-# Deploy: https://render.com/deploy
-# ─────────────────────────────────────────────────────────
+# Free-only deployment. Reuses the verified API service.
+# Jobs persist in external free PostgreSQL; Actions runs the trusted batch worker.
 services:
   - type: web
-    name: rift-cicd-agent
+    name: rethread-api
     runtime: docker
-    dockerfilePath: ./Dockerfile
+    repo: https://github.com/dineshsuthar123/Rethread
+    branch: main
+    dockerfilePath: ./deploy/api.Dockerfile
+    dockerContext: .
     plan: free
     region: oregon
+    healthCheckPath: /api/health
+    autoDeployTrigger: "off"
     envVars:
-      - key: PORT
-        value: 3001
       - key: NODE_ENV
         value: production
-      - key: GITHUB_TOKEN
-        sync: false  # Set manually in Render dashboard
-      - key: GROQ_API_KEY
+      - key: PORT
+        value: 3001
+      - key: SESSION_ENCRYPTION_KEY
+        generateValue: true
+      - key: API_DB_POOL_SIZE
+        value: 5
+      - key: DATABASE_URL
         sync: false
-      - key: LLM_PROVIDER
-        value: groq
-      - key: MAX_ITERATIONS
-        value: 10
-      - key: SANDBOX_IMAGE
-        value: rift-sandbox:latest
-      - key: CORS_ORIGINS
-        value: https://rift-cicd.vercel.app
+      - key: MIGRATION_DATABASE_URL
+        sync: false
+      - key: GITHUB_APP_ID
+        sync: false
+      - key: GITHUB_APP_SLUG
+        sync: false
+      - key: GITHUB_APP_PRIVATE_KEY
+        sync: false
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+      - key: GITHUB_WEBHOOK_SECRET
+        sync: false
+      - key: PUBLIC_ORIGIN
+        sync: false
+      - key: WORKER_MODE
+        value: github-actions
+      - key: FREE_ONLY
+        value: "true"
+      - key: CONTROL_REPOSITORY
+        value: dineshsuthar123/Rethread
+      - key: CONTROL_REPOSITORY_ID
+        value: 1161587671
+      - key: CONTROL_REF
+        value: main
+      - key: CONTROL_INSTALLATION_ID
+        sync: false

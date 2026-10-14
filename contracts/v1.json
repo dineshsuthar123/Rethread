@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "stages": ["queued","capturing","reproducing","diagnosing","proposing","verifying","ready_for_review"],
+  "transitions": {
+    "queued":["capturing","cancelled","blocked","unsupported","failed","needs_input"],
+    "capturing":["reproducing","needs_input","unsupported","blocked","failed","cancelled"],
+    "reproducing":["diagnosing","needs_input","blocked","failed","cancelled"],
+    "diagnosing":["proposing","needs_input","blocked","failed","cancelled"],
+    "proposing":["verifying","failed","blocked","cancelled"],
+    "verifying":["ready_for_review","failed","blocked","cancelled"],
+    "ready_for_review":["publishing","rejected","cancelled","superseded"],
+    "publishing":["pr_opened","ready_for_review","superseded","failed","cancelled","blocked"],
+    "pr_opened":[],"needs_input":[],"unsupported":[],"blocked":[],"failed":[],"cancelled":[],"rejected":[],"superseded":[]
+  },
+  "limits":{"logBytes":2097152,"artifactBytes":10485760,"caseBytes":26214400,"eventBatch":200,"patchBytes":100000,"changedFiles":8,"tenantConcurrency":2,"attempts":3,"leaseSeconds":60}
+}
