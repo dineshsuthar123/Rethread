@@ -73,3 +73,10 @@
   and keeping the repository clean. Prepared main deployment/dispatch defaults
   and updated the runbooks. Original local brand/test input folders are preserved
   with local Git exclusions; secrets and private backups remain ignored.
+- 2026-10-21: Configured the owner's ready E2B template and confirmed $1 free
+  allocation in Render/Actions; both control and fixture App selections pass.
+  The first fixture Case correctly blocked on reachable guest metadata. Added
+  a separate Linux network namespace, no-new-privileges and mandatory probe
+  evidence before target execution. Real E2B diagnostics reproduce the pinned
+  pytest failure and pass an independent network/non-root/secret-absence check.
+  Full Case repair and publication acceptance remain pending.

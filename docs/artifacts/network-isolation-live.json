@@ -1,0 +1,115 @@
+{
+  "date": "2026-10-21",
+  "provider": "E2B",
+  "scope": "Manual diagnostics against the captured Python fixture; complete Case repair still pending",
+  "baseSha": "a4d9f37696a35131233937165069708c80135a42",
+  "templateId": "l0bqj01o9pn39f7wapb9",
+  "confirmedFreeAllocationMicros": 1000000,
+  "conservativelyReservedMicrosAfterDiagnostics": 82800,
+  "checks": [
+    {
+      "check": {
+        "id": "2dbc8b9b-6527-4526-bcd4-637892a5aa73",
+        "phase": "base",
+        "name": "tests/test_delivery.py::test_retry_delivery",
+        "command": "python -m pytest -q tests/test_delivery.py::test_retry_delivery --junitxml=/evidence/report.xml",
+        "exitCode": 1,
+        "collected": 1,
+        "passed": false,
+        "outputHash": "f01f0c81afd48a5261c166a78525c6f4c1f8c448c905ac4c4bf74965b2584f86",
+        "artifactId": null,
+        "durationMs": 970,
+        "reason": null
+      },
+      "networkIsolation": {
+        "verified": true,
+        "namespaceSeparated": true,
+        "noNewPrivileges": true,
+        "probes": [
+          {
+            "address": "http://169.254.169.254/",
+            "exitCode": 7,
+            "responseBytes": 0
+          },
+          {
+            "address": "http://10.0.0.1/",
+            "exitCode": 7,
+            "responseBytes": 0
+          },
+          {
+            "address": "http://1.1.1.1/",
+            "exitCode": 7,
+            "responseBytes": 0
+          },
+          {
+            "address": "http://[2606:4700:4700::1111]/",
+            "exitCode": 7,
+            "responseBytes": 0
+          },
+          {
+            "address": "https://example.com/",
+            "exitCode": 6,
+            "responseBytes": 0
+          },
+          {
+            "address": "https://pypi.org/simple/",
+            "exitCode": 6,
+            "responseBytes": 0
+          }
+        ]
+      }
+    },
+    {
+      "check": {
+        "id": "1db65d51-80ea-47da-83c0-5f218586936f",
+        "phase": "preflight",
+        "name": "tests/test_runtime_boundary.py::test_runtime_boundary",
+        "command": "python -m pytest -q tests/test_runtime_boundary.py::test_runtime_boundary --junitxml=/evidence/report.xml",
+        "exitCode": 0,
+        "collected": 1,
+        "passed": true,
+        "outputHash": "a71df3ef716cabe43ead70bd8311cda3aeadcb986bea501da0ea9262f31c3925",
+        "artifactId": null,
+        "durationMs": 492,
+        "reason": null
+      },
+      "networkIsolation": {
+        "verified": true,
+        "namespaceSeparated": true,
+        "noNewPrivileges": true,
+        "probes": [
+          {
+            "address": "http://169.254.169.254/",
+            "exitCode": 7,
+            "responseBytes": 0
+          },
+          {
+            "address": "http://10.0.0.1/",
+            "exitCode": 7,
+            "responseBytes": 0
+          },
+          {
+            "address": "http://1.1.1.1/",
+            "exitCode": 7,
+            "responseBytes": 0
+          },
+          {
+            "address": "http://[2606:4700:4700::1111]/",
+            "exitCode": 7,
+            "responseBytes": 0
+          },
+          {
+            "address": "https://example.com/",
+            "exitCode": 6,
+            "responseBytes": 0
+          },
+          {
+            "address": "https://pypi.org/simple/",
+            "exitCode": 6,
+            "responseBytes": 0
+          }
+        ]
+      }
+    }
+  ]
+}

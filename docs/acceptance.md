@@ -1,9 +1,24 @@
 # Acceptance evidence
 
-Initial evidence 2026-10-13 UTC; provider setup update 2026-10-14. **The hosted repair release is incomplete.** The
-frontend, existing free API, Supabase schema, actual user login and idle Actions
-worker are verified. E2B repair/LLM/guard/PR acceptance remains blocked by the
-absent template, zero credit allocation and fixture installation selection.
+Initial evidence 2026-10-13 UTC; latest provider diagnostics 2026-10-21.
+**The complete hosted repair release is still incomplete.** The frontend, free
+API, Supabase schema, actual user login and Actions worker are verified. The
+owner built E2B template `l0bqj01o9pn39f7wapb9`, confirmed a $1 free-credit
+allocation, and installed the App on both control and fixture repositories.
+Those settings are staged in Render and Actions; startup readiness passed.
+
+The first real fixture Case blocked before target tests because the guest
+metadata endpoint returned HTTP bytes despite provider deny-all networking.
+The fix adds a fresh Linux network namespace and no-new-privileges to the
+unprivileged evaluator. Actual E2B diagnostics reproduced the original pytest
+failure and passed a separate metadata/private/public IPv4/IPv6 denial,
+non-root, no-new-privileges and secret-absence test. Each sandbox creation was
+conservatively charged to the existing $1 allowance. See
+[live isolation evidence](artifacts/network-isolation-live.json).
+The full LLM/candidate/guard/approval/PR journey still needs verification.
+
+The sections below retain the earlier dated setup evidence, including blockers
+that were resolved by this update.
 No paid plan, worker, database, top-up
 or payment method was created. The owner selected existing Supabase Free.
 

@@ -3,6 +3,7 @@
 The trusted worker reads this file as bytes, never executes repository commands.
 """
 
+import ctypes
 import json
 import os
 import pwd
@@ -12,6 +13,35 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+
+NETWORK_PROBES = (
+    "http://169.254.169.254/",
+    "http://10.0.0.1/",
+    "http://1.1.1.1/",
+    "http://[2606:4700:4700::1111]/",
+    "https://example.com/",
+    "https://pypi.org/simple/",
+)
+
+
+def network_isolation(env, demote):
+    # The provider firewall does not cover the guest's local metadata service.
+    # Require a separate kernel network namespace as well as provider egress rules.
+    if os.readlink("/proc/self/ns/net") == os.readlink("/proc/1/ns/net"):
+        raise RuntimeError("Target network namespace is not isolated")
+    probes = []
+    for address in NETWORK_PROBES:
+        probe = subprocess.run(
+            ["/usr/bin/curl", "-q", "--noproxy", "*", "-sS", "-I", "--max-time", "2", address],
+            env=env,
+            preexec_fn=demote,
+            capture_output=True,
+            timeout=5,
+        )
+        if probe.stdout or probe.returncode not in (6, 7, 28, 35, 52, 56):
+            raise RuntimeError("Network isolation probe received bytes or an invalid denial")
+        probes.append({"address": address, "exitCode": probe.returncode, "responseBytes": 0})
+    return {"verified": True, "namespaceSeparated": True, "noNewPrivileges": True, "probes": probes}
 
 
 def main():
@@ -32,6 +62,9 @@ def main():
     )
 
     def demote():
+        # Prevent target code from regaining privileges through a setuid binary.
+        if ctypes.CDLL(None, use_errno=True).prctl(38, 1, 0, 0, 0) != 0:
+            raise RuntimeError("Cannot require no-new-privileges")
         os.setgroups([])
         os.setgid(user.pw_gid)
         os.setuid(user.pw_uid)
@@ -43,6 +76,18 @@ def main():
         "PYTHONPATH": "/workspace",
         "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1",
     }
+    try:
+        isolation = network_isolation(env, demote)
+    except Exception as error:
+        Path("/opt/rethread/result.json").write_text(
+            json.dumps(
+                {
+                    "isolation": {"verified": False},
+                    "error": f"Target network isolation failed: {type(error).__name__}",
+                }
+            )
+        )
+        return
     started = time.monotonic()
     process = subprocess.Popen(
         args,
@@ -88,6 +133,7 @@ def main():
                 "report": report_text,
                 "durationMs": int((time.monotonic() - started) * 1000),
                 "truncated": truncated,
+                "isolation": isolation,
             }
         )
     )
