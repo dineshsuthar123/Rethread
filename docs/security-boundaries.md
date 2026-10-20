@@ -11,11 +11,23 @@ embedded environment files and submodules. Source limits: 30 MiB compressed,
 E2B is a required boundary. There is no Docker/host fallback. The configured
 template and root-owned evaluator are outside the candidate's writable tree.
 Binary-wheel installation uses exact hashed requirements and registry egress;
-test egress is denied. An isolated system Python starts the evaluator without
-site initialization. Target commands run as `user` with a small explicit env;
-they cannot alter the evaluator or inherit worker keys. Evaluator stdout is
-bounded at 2 MiB, with a process-group timeout. Production HTTP response probes
-for metadata/internal/public blocked destinations must be exercised in E2B.
+test egress is denied. The evaluator starts through `unshare --net` in a fresh
+Linux network namespace and verifies that it differs from the guest init
+namespace. An isolated system Python disables site initialization. Target
+commands and HTTP probes run as `user` with no-new-privileges and a small
+explicit env; they cannot alter the evaluator or inherit worker keys. Checks
+require zero response bytes from metadata, private, public IPv4/IPv6, and the
+formerly allowed package registry. A missing namespace, failed probe, or absent
+isolation report blocks execution. Evaluator stdout is bounded at 2 MiB, with
+a process-group timeout.
+
+Live diagnostics on 2026-10-21 found that the guest metadata service still
+returned `Server: Firecracker API` under the provider deny-all rule. The old
+probe correctly blocked the Case. The additional kernel namespace prevents
+target access to that service; no response allowlist or host fallback is used.
+The original pytest failure and an independent unprivileged/network/secret
+absence check ran inside actual E2B sandboxes. See
+[live diagnostic evidence](artifacts/network-isolation-live.json).
 Shared-CDN domain allowlists are not a perfect destination boundary, as
 [E2B documents](https://docs.e2b.dev/network/internet-access) explain.
 

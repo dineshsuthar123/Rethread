@@ -3,14 +3,13 @@
 import json
 import os
 import shlex
-import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 from uuid import uuid4
 from xml.etree import ElementTree
 
-from e2b import CommandExitException, Sandbox
+from e2b import Sandbox
 
 from .contracts import Check
 from .policy import digest, safe_path
@@ -19,6 +18,35 @@ from .redaction import redact
 
 class SandboxUnavailable(RuntimeError):
     pass
+
+
+def verified_network_isolation(value):
+    expected = {
+        "http://169.254.169.254/",
+        "http://10.0.0.1/",
+        "http://1.1.1.1/",
+        "http://[2606:4700:4700::1111]/",
+        "https://example.com/",
+        "https://pypi.org/simple/",
+    }
+    if not isinstance(value, dict) or not all(
+        value.get(key) is True for key in ("verified", "namespaceSeparated", "noNewPrivileges")
+    ):
+        return False
+    probes = value.get("probes")
+    if not isinstance(probes, list) or len(probes) != len(expected):
+        return False
+    if not all(
+        isinstance(probe, dict)
+        and isinstance(probe.get("address"), str)
+        and probe.get("address") in expected
+        and type(probe.get("responseBytes")) is int
+        and probe["responseBytes"] == 0
+        and probe.get("exitCode") in (6, 7, 28, 35, 52, 56)
+        for probe in probes
+    ):
+        return False
+    return {probe["address"] for probe in probes} == expected
 
 
 @dataclass
@@ -156,20 +184,10 @@ class E2BProvider:
                 "requirementsHash": digest(files["requirements.lock"]),
                 "dependencyInstall": "python -m pip install "
                 "--require-hashes --no-deps -r requirements.lock",
-                "network": "Package registry egress only for install; denied for checks",
-                "complete": True,
+                "network": "Registry-only install; checks in an unprivileged network namespace",
+                "complete": False,
             }
             sandbox.update_network({"allow_out": [], "deny_out": ["0.0.0.0/0"]})
-            # A valid TCP connect is insufficient: require no HTTP response bytes.
-            for address in ("http://169.254.169.254/", "http://10.0.0.1/", "https://example.com/"):
-                try:
-                    probe = sandbox.commands.run(
-                        f"curl -sS -I --max-time 2 {shlex.quote(address)}", user="user", timeout=5
-                    )
-                except CommandExitException as denied:
-                    probe = denied
-                if probe.stdout.strip():
-                    raise SandboxUnavailable("Network isolation probe received application bytes")
             if self.cancelled():
                 raise SandboxUnavailable("Job cancelled")
             if kind == "pytest":
@@ -189,16 +207,19 @@ class E2BProvider:
             sandbox.commands.run(
                 "chmod -R go-w /opt/rethread && chmod 755 /opt/rethread", user="root", timeout=10
             )
-            started = time.monotonic()
             try:
                 sandbox.commands.run(
-                    "/usr/bin/env -i PATH=/usr/local/bin:/usr/bin:/bin "
+                    "/usr/bin/unshare --net -- /usr/bin/env -i PATH=/usr/local/bin:/usr/bin:/bin "
                     "python3 -I -S /opt/rethread/evaluator.py "
                     f"{shlex.quote(kind)} {shlex.quote(test)}",
                     user="root",
                     timeout=90,
                 )
                 result = json.loads(sandbox.files.read("/opt/rethread/result.json", user="root"))
+                isolation = result.get("isolation", {})
+                if not verified_network_isolation(isolation):
+                    raise SandboxUnavailable("Target network isolation was not verified")
+                self.last_recipe.update({"networkIsolation": isolation, "complete": True})
                 if len(result["output"]) > 2 * 1024 * 1024:
                     raise ValueError("Evaluator output exceeds limit")
                 return normalize(
@@ -211,17 +232,12 @@ class E2BProvider:
                     result["durationMs"],
                     test,
                 )
+            except SandboxUnavailable:
+                raise
             except Exception as exc:
-                return normalize(
-                    kind,
-                    phase,
-                    command,
-                    None,
-                    f"Runner failed: {type(exc).__name__}",
-                    "",
-                    int((time.monotonic() - started) * 1000),
-                    test,
-                )
+                raise SandboxUnavailable(
+                    f"Isolated evaluator did not return verified evidence ({type(exc).__name__})"
+                ) from None
         finally:
             self.close()
 
