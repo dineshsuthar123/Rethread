@@ -80,3 +80,9 @@
   evidence before target execution. Real E2B diagnostics reproduce the pinned
   pytest failure and pass an independent network/non-root/secret-absence check.
   Full Case repair and publication acceptance remain pending.
+- The deployed namespace fix passed CI and real Case verification reached all
+  eight required checks. Original failure, repaired behavior, full pytest suite
+  and guard fail-on-base/pass-on-candidate were confirmed. Ruff rejected the
+  generated guard's import order (`I001`), so the Case correctly remained failed.
+  Clarified that generated guards must follow the unchanged repository lint
+  rules and existing test import style; no checks are suppressed or auto-fixed.
