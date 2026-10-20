@@ -76,6 +76,27 @@ FORBIDDEN = re.compile(
 )
 
 
+def normalize_guard_spacing(content: str) -> str:
+    """Format only spacing before generated top-level definitions, preserving the AST."""
+    tree = ast.parse(content)
+    lines = content.splitlines(keepends=True)
+    definitions = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
+    for node in reversed(tree.body):
+        if not isinstance(node, definitions):
+            continue
+        start = min([node.lineno, *(d.lineno for d in node.decorator_list)]) - 1
+        before = start
+        while before > 0 and not lines[before - 1].strip():
+            before -= 1
+        lines[before:start] = ["\n", "\n"] if before else []
+    formatted = "".join(lines)
+    if len(formatted) > 30_000:
+        raise PolicyError("Formatted guard exceeds its size limit")
+    if ast.dump(ast.parse(formatted)) != ast.dump(tree):
+        raise PolicyError("Guard formatting changed its parsed code")
+    return formatted
+
+
 def validate_guard(content: str, test: str):
     if FORBIDDEN.search(content):
         raise PolicyError("Guard suppresses verification")
@@ -129,6 +150,7 @@ def apply_plan(files: dict[str, bytes], plan: Plan, contract: str, kind: str):
             raise PolicyError("Guard must be an additive test")
         if not set(guard.paths).issubset(seen):
             raise PolicyError("Guard source links must refer to changed files")
+        guard.content = normalize_guard_spacing(guard.content)
         validate_guard(guard.content, guard.test)
         changed[guard.path] = guard.content.encode()
         diff.extend(
