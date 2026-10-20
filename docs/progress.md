@@ -86,3 +86,12 @@
   generated guard's import order (`I001`), so the Case correctly remained failed.
   Clarified that generated guards must follow the unchanged repository lint
   rules and existing test import style; no checks are suppressed or auto-fixed.
+- The planner still emitted an extra blank line before its new guard function.
+  Generated guards now receive deterministic top-level definition spacing before
+  proposal hashing and verification. Parsed AST equality is mandatory; existing
+  tests, source, imports, assertions and lint configuration are unchanged. The
+  saved model proposal can be replayed through this correction without another
+  inference request, followed by all original candidate and guard checks.
+- The next dependency scan reported the old certifi CA bundle. Updated only
+  certifi in the frozen Python lockfile from 2026.7.22 to 2026.10.19, the patched
+  release identified by the advisory, and retained all audit gates.

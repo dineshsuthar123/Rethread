@@ -1,3 +1,4 @@
+import ast
 import io
 import tarfile
 
@@ -9,6 +10,7 @@ from agent.rethread.policy import (
     PolicyError,
     apply_plan,
     digest,
+    normalize_guard_spacing,
     pinned_requirements,
     safe_path,
     unpack_archive,
@@ -129,3 +131,31 @@ def test_unpinned_dependencies_are_needs_input():
     files["requirements.lock"] = b"requests>=2\n"
     with pytest.raises(PolicyError, match="incomplete"):
         pinned_requirements(files)
+
+
+def test_generated_guard_spacing_preserves_code_and_existing_tests():
+    files = fixture_files()
+    plan = fixture_plan()
+    original = plan.guard.content.replace("\n\n\ndef ", "\n\n\n\ndef ")
+    plan.guard.content = original
+    changed, _ = apply_plan(files, plan, plan.guard.contract, "pytest")
+    formatted = changed[plan.guard.path].decode()
+    assert "\n\n\n\ndef " not in formatted
+    assert "\n\n\ndef " in formatted
+    assert ast.dump(ast.parse(original)) == ast.dump(ast.parse(formatted))
+    assert plan.guard.content == formatted
+    assert all(
+        changed[path] == content for path, content in files.items() if path.startswith("tests/")
+    )
+
+
+def test_guard_spacing_preserves_multiline_literals_and_decorators():
+    original = (
+        'TEXT = """line\n\n\n\ndef inside_string():\n"""\n\n\n\n'
+        "@decorator\ndef test_guard():\n    assert TEXT\n"
+    )
+    formatted = normalize_guard_spacing(original)
+    assert '"""line\n\n\n\ndef inside_string():\n"""' in formatted
+    assert "@decorator\ndef test_guard" in formatted
+    assert ast.dump(ast.parse(original)) == ast.dump(ast.parse(formatted))
+    assert normalize_guard_spacing(formatted) == formatted
