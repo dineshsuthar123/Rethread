@@ -92,3 +92,6 @@
   tests, source, imports, assertions and lint configuration are unchanged. The
   saved model proposal can be replayed through this correction without another
   inference request, followed by all original candidate and guard checks.
+- The next dependency scan reported the old certifi CA bundle. Updated only
+  certifi in the frozen Python lockfile from 2026.7.22 to 2026.10.19, the patched
+  release identified by the advisory, and retained all audit gates.
